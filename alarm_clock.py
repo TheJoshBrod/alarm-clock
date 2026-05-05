@@ -2,6 +2,7 @@ import json
 import os
 import socket
 import subprocess
+import sys
 import threading
 import time
 import uuid
@@ -49,13 +50,19 @@ def save_alarms():
 
 def download_audio(url, dest_wav):
     cmd = [
-        "yt-dlp",
+        sys.executable, "-m", "yt_dlp",
         "-x",
         "--audio-format", "wav",
         "--audio-quality", "0",
+        # YouTube has been rejecting the default ios/android player clients;
+        # tv + web_safari + mweb is the combination that's currently working.
+        "--extractor-args", "youtube:player_client=tv,web_safari,mweb,web",
         "-o", str(dest_wav.with_suffix(".%(ext)s")),
-        url,
     ]
+    cookies = os.environ.get("YTDLP_COOKIES")
+    if cookies:
+        cmd += ["--cookies", cookies]
+    cmd.append(url)
     subprocess.run(cmd, check=True)
     if not dest_wav.exists():
         # yt-dlp may have produced a slightly different filename — find it
