@@ -48,10 +48,18 @@ def save_alarms():
     tmp.replace(ALARMS_FILE)
 
 
+def _yt_dlp_cmd():
+    # Prefer a local standalone binary (current yt-dlp, no Python version cap).
+    # Fall back to the pip-installed module if the binary isn't present.
+    binary = os.environ.get("YTDLP_BIN", str(BASE_DIR / "yt-dlp"))
+    if os.path.isfile(binary) and os.access(binary, os.X_OK):
+        return [binary]
+    return [sys.executable, "-m", "yt_dlp"]
+
+
 def download_audio(url, dest_wav):
     player_clients = os.environ.get("YTDLP_PLAYER_CLIENTS", "web,mweb")
-    cmd = [
-        sys.executable, "-m", "yt_dlp",
+    cmd = _yt_dlp_cmd() + [
         "-x",
         "--audio-format", "wav",
         "--audio-quality", "0",
@@ -205,7 +213,10 @@ def create_alarm():
         download_audio(youtube_url, wav_path)
     except (subprocess.CalledProcessError, RuntimeError) as e:
         for f in AUDIO_DIR.glob(f"{alarm_id}.*"):
-            f.unlink(missing_ok=True)
+            try:
+                f.unlink()
+            except FileNotFoundError:
+                pass
         return f"Failed to download audio: {e}", 500
 
     alarm = {
