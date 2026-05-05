@@ -49,21 +49,25 @@ def save_alarms():
 
 
 def download_audio(url, dest_wav):
+    player_clients = os.environ.get("YTDLP_PLAYER_CLIENTS", "web,mweb")
     cmd = [
         sys.executable, "-m", "yt_dlp",
         "-x",
         "--audio-format", "wav",
         "--audio-quality", "0",
-        # YouTube has been rejecting the default ios/android player clients;
-        # tv + web_safari + mweb is the combination that's currently working.
-        "--extractor-args", "youtube:player_client=tv,web_safari,mweb,web",
+        "-f", "bestaudio/best",
+        "--no-playlist",
+        "--extractor-args", f"youtube:player_client={player_clients}",
         "-o", str(dest_wav.with_suffix(".%(ext)s")),
     ]
     cookies = os.environ.get("YTDLP_COOKIES")
     if cookies:
         cmd += ["--cookies", cookies]
     cmd.append(url)
-    subprocess.run(cmd, check=True)
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        last_lines = "\n".join((result.stderr or result.stdout).splitlines()[-20:])
+        raise RuntimeError(f"yt-dlp failed (exit {result.returncode}):\n{last_lines}")
     if not dest_wav.exists():
         # yt-dlp may have produced a slightly different filename — find it
         candidates = list(AUDIO_DIR.glob(f"{dest_wav.stem}.*"))
@@ -71,7 +75,8 @@ def download_audio(url, dest_wav):
         if wav_candidates:
             wav_candidates[0].rename(dest_wav)
         else:
-            raise RuntimeError("yt-dlp did not produce a wav file")
+            last_lines = "\n".join((result.stderr or result.stdout).splitlines()[-20:])
+            raise RuntimeError(f"yt-dlp did not produce a wav file:\n{last_lines}")
 
 
 def play_loop_until_stopped(wav_path):
@@ -198,7 +203,9 @@ def create_alarm():
     wav_path = AUDIO_DIR / f"{alarm_id}.wav"
     try:
         download_audio(youtube_url, wav_path)
-    except subprocess.CalledProcessError as e:
+    except (subprocess.CalledProcessError, RuntimeError) as e:
+        for f in AUDIO_DIR.glob(f"{alarm_id}.*"):
+            f.unlink(missing_ok=True)
         return f"Failed to download audio: {e}", 500
 
     alarm = {
