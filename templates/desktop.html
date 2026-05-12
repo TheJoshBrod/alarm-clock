@@ -256,13 +256,13 @@ label.field {
 .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
 .field-row label.field { margin-bottom: 0; }
 
-input[type=text], input[type=time], select {
+input[type=text], input[type=time] {
   padding: .5rem .7rem; font-size: .92rem; font-family: var(--font-ui);
   border: 1px solid var(--border); border-radius: 10px;
   background: var(--surface); color: var(--ink); width: 100%;
   transition: border-color var(--dur-f) var(--ease), box-shadow var(--dur-f) var(--ease);
 }
-input[type=text]:focus, input[type=time]:focus, select:focus {
+input[type=text]:focus, input[type=time]:focus {
   outline: none; border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-dim);
 }
@@ -310,8 +310,6 @@ input[type=text]:focus, input[type=time]:focus, select:focus {
 .switch-wrap input:checked ~ .switch-thumb { transform: translateX(calc(2.5rem - 1.35rem)); }
 .switch-wrap input:focus-visible ~ .switch-track { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-select.gradual-dur { width: auto; font-size: .85rem; padding: .35rem .55rem; }
-select.gradual-dur:disabled { opacity: .4; }
 
 .hint { font-size: .78rem; color: var(--ink-dim); margin-bottom: .45rem; }
 
@@ -363,7 +361,6 @@ button.icon:hover { opacity: 1; background: transparent; box-shadow: none; trans
 /* ── Audio library ── */
 .audio-panel { padding: 1.15rem 1.25rem; }
 .audio-panel h2 { font-size: .95rem; font-weight: 700; margin-bottom: .9rem; }
-input[type=file] { font-size: .85rem; flex: 1; color: var(--ink); font-family: var(--font-ui); cursor: pointer; }
 .audio-toolbar { margin-bottom: .55rem; }
 input[type=search] {
   width: 100%; padding: .42rem .65rem; font-size: .88rem; font-family: var(--font-ui);
@@ -410,6 +407,56 @@ ul.audio-list li[data-hidden] { display: none; }
   margin-top: .3rem; margin-left: calc(2.5rem + .55rem);
   display: flex; align-items: center; gap: .5rem;
   font-size: .85rem; color: var(--ink-dim);
+}
+
+/* ── Custom Select ── */
+.csel { position: relative; display: block; width: 100%; }
+.csel-sm { display: inline-flex; width: auto; }
+.csel-trigger {
+  width: 100%; text-align: left; gap: .45rem;
+  padding: .5rem .7rem; font-size: .92rem;
+}
+.csel-sm .csel-trigger { width: auto; font-size: .85rem; padding: .35rem .55rem; }
+.csel-trigger:hover { transform: none !important; box-shadow: none !important; }
+.csel-trigger[aria-expanded="true"] {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px var(--accent-dim) !important;
+}
+.csel-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 400; }
+.csel-arrow { flex-shrink: 0; color: var(--ink-dim); line-height: 0; transition: transform var(--dur-f) var(--ease); }
+.csel-trigger[aria-expanded="true"] .csel-arrow { transform: rotate(180deg); }
+.csel-disabled .csel-trigger { opacity: .4; pointer-events: none; }
+.csel-menu {
+  position: absolute; top: calc(100% + 5px); left: 0; right: 0; z-index: 300;
+  background: var(--surface-hi);
+  backdrop-filter: blur(24px) saturate(1.7);
+  -webkit-backdrop-filter: blur(24px) saturate(1.7);
+  border: 1px solid var(--border); border-radius: 12px;
+  padding: .3rem; list-style: none;
+  box-shadow: 0 10px 32px -8px rgba(0,0,0,.55);
+  max-height: 15rem; overflow-y: auto;
+}
+.csel-sm .csel-menu { width: max-content; min-width: 8rem; }
+.csel-opt {
+  padding: .4rem .65rem; border-radius: 8px;
+  font-size: .9rem; cursor: pointer; color: var(--ink);
+  user-select: none;
+  transition: background var(--dur-f) var(--ease), color var(--dur-f) var(--ease);
+}
+.csel-opt:hover, .csel-opt:focus { background: var(--accent-dim); color: var(--accent); outline: none; }
+.csel-opt[aria-selected="true"] { background: var(--accent-dim); color: var(--accent); font-weight: 600; }
+
+/* ── File Upload ── */
+.file-upload-wrap { display: flex; flex-direction: column; gap: .5rem; }
+.file-upload-btn {
+  width: 100%; justify-content: center;
+  border-style: dashed; border-color: var(--border);
+  padding: .6rem; font-size: .88rem;
+}
+.file-upload-btn:hover { border-color: var(--accent) !important; color: var(--accent); }
+.file-name-display {
+  font-size: .82rem; color: var(--ink-dim);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 
 /* ── Toast ── */
@@ -793,6 +840,113 @@ function closeAlarmPanel(id) {
   const sum = document.getElementById('sum-' + id);
   if (sum) sum.setAttribute('aria-expanded', 'false');
 }
+
+// ── Custom Selects ──
+function buildCustomSelect(sel) {
+  const isSmall = sel.classList.contains('gradual-dur');
+  const wrap = document.createElement('div');
+  wrap.className = 'csel' + (isSmall ? ' csel-sm' : '');
+  if (sel.disabled) wrap.classList.add('csel-disabled');
+
+  const trigger = document.createElement('button');
+  trigger.type = 'button';
+  trigger.className = 'csel-trigger';
+  trigger.setAttribute('aria-haspopup', 'listbox');
+  trigger.setAttribute('aria-expanded', 'false');
+
+  const lbl = document.createElement('span');
+  lbl.className = 'csel-label';
+
+  const arrow = document.createElement('span');
+  arrow.className = 'csel-arrow';
+  arrow.setAttribute('aria-hidden', 'true');
+  arrow.innerHTML = '<svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  trigger.append(lbl, arrow);
+
+  const menu = document.createElement('ul');
+  menu.className = 'csel-menu';
+  menu.setAttribute('role', 'listbox');
+  menu.hidden = true;
+
+  Array.from(sel.options).forEach(opt => {
+    const li = document.createElement('li');
+    li.className = 'csel-opt';
+    li.setAttribute('role', 'option');
+    li.dataset.value = opt.value;
+    li.tabIndex = -1;
+    li.textContent = opt.textContent;
+    if (opt.selected) { li.setAttribute('aria-selected', 'true'); lbl.textContent = opt.textContent; }
+    menu.append(li);
+  });
+
+  wrap.append(trigger, menu);
+  sel.parentNode.insertBefore(wrap, sel);
+  sel.style.cssText = 'position:absolute;opacity:0;pointer-events:none;width:0;height:0;overflow:hidden;';
+
+  const openMenu = () => {
+    trigger.setAttribute('aria-expanded', 'true');
+    menu.hidden = false;
+    (menu.querySelector('[aria-selected="true"]') || menu.firstElementChild)?.focus();
+  };
+  const closeMenu = () => {
+    trigger.setAttribute('aria-expanded', 'false');
+    menu.hidden = true;
+  };
+  const pickOpt = li => {
+    menu.querySelectorAll('.csel-opt').forEach(o => o.removeAttribute('aria-selected'));
+    li.setAttribute('aria-selected', 'true');
+    lbl.textContent = li.textContent;
+    sel.value = li.dataset.value;
+    sel.dispatchEvent(new Event('change', { bubbles: true }));
+    closeMenu();
+    trigger.focus();
+  };
+
+  trigger.addEventListener('click', () => menu.hidden ? openMenu() : closeMenu());
+  menu.addEventListener('click', e => { const li = e.target.closest('.csel-opt'); if (li) pickOpt(li); });
+  menu.addEventListener('keydown', e => {
+    const opts = [...menu.querySelectorAll('.csel-opt')];
+    const i = opts.indexOf(document.activeElement);
+    if      (e.key === 'ArrowDown') { e.preventDefault(); opts[Math.min(i+1, opts.length-1)]?.focus(); }
+    else if (e.key === 'ArrowUp')   { e.preventDefault(); opts[Math.max(i-1, 0)]?.focus(); }
+    else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (document.activeElement.classList.contains('csel-opt')) pickOpt(document.activeElement); }
+    else if (e.key === 'Escape' || e.key === 'Tab') closeMenu();
+  });
+  trigger.addEventListener('keydown', e => {
+    if      (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openMenu(); }
+    else if (e.key === 'Escape') closeMenu();
+  });
+  document.addEventListener('pointerdown', e => { if (!wrap.contains(e.target)) closeMenu(); }, true);
+
+  new MutationObserver(() => {
+    wrap.classList.toggle('csel-disabled', sel.disabled);
+  }).observe(sel, { attributes: true, attributeFilter: ['disabled'] });
+}
+document.querySelectorAll('select').forEach(buildCustomSelect);
+
+// ── File Upload Enhancement ──
+document.querySelectorAll('input[type=file]').forEach(inp => {
+  const nameLbl = document.createElement('div');
+  nameLbl.className = 'file-name-display';
+  nameLbl.textContent = 'No file chosen';
+
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'file-upload-btn';
+  btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink:0"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>\xA0Choose audio file…';
+  btn.addEventListener('click', () => inp.click());
+
+  inp.style.cssText = 'position:absolute;opacity:0;pointer-events:none;width:0;height:0;overflow:hidden;';
+  inp.addEventListener('change', () => {
+    nameLbl.textContent = inp.files[0] ? inp.files[0].name : 'No file chosen';
+    nameLbl.style.color = inp.files[0] ? 'var(--ink)' : '';
+  });
+
+  const wrap = document.createElement('div');
+  wrap.className = 'file-upload-wrap';
+  inp.parentNode.insertBefore(wrap, inp);
+  wrap.append(btn, nameLbl, inp);
+});
 
 // ── Live clock ──
 function updateClock() {
