@@ -169,7 +169,8 @@
               <span class="alarm-label-row" id="al-{{ loop.index }}">
                 <span>{{ a.label or '(no label)' }}</span>
                 <button type="button" class="icon" style="font-size:.85rem;" title="Rename"
-                        onclick="startAlarmRename({{ loop.index }}, {{ a.label | tojson }})">✏️</button>
+                        data-idx="{{ loop.index }}" data-label="{{ a.label or '' }}"
+                        onclick="startAlarmRename(this)"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></button>
               </span>
               <form class="alarm-rename-form" id="arf-{{ loop.index }}" method="post"
                     action="{{ url_for('rename_alarm', alarm_id=a.id) }}">
@@ -231,7 +232,7 @@
               <div class="filename-cell">
                 <span class="filename" id="fn-{{ loop.index }}">{{ f.name }}</span>
                 <button type="button" class="icon" title="Rename"
-                        onclick="startRename({{ loop.index }}, '{{ f.stem }}')">✏️</button>
+                        onclick="startRename({{ loop.index }}, '{{ f.stem }}')"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></button>
                 <form class="rename-form" id="rf-{{ loop.index }}" method="post"
                       action="{{ url_for('rename_audio', filename=f.name) }}">
                   <input class="rename-input" type="text" name="new_name" id="ri-{{ loop.index }}" required>
@@ -319,7 +320,9 @@ document.addEventListener('keydown', e => {
 });
 
 // Alarm rename
-function startAlarmRename(idx, currentLabel) {
+function startAlarmRename(btn) {
+  const idx = btn.dataset.idx;
+  const currentLabel = btn.dataset.label;
   document.getElementById('al-' + idx).style.display = 'none';
   const arf = document.getElementById('arf-' + idx);
   arf.classList.add('active');
