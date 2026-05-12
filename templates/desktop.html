@@ -41,13 +41,23 @@
   .banner p { margin: 0; flex: 1; }
 
   ul.alarms { list-style: none; padding: 0; margin: 0; }
-  ul.alarms li { display: flex; align-items: center; gap: .5rem; padding: .5rem 0;
-                 border-bottom: 1px solid #8882; flex-wrap: wrap; }
+  ul.alarms li { display: block; border-bottom: 1px solid #8882; }
   ul.alarms li:last-child { border-bottom: none; }
+  .alarm-summary { display: flex; align-items: center; gap: .5rem; padding: .5rem .25rem;
+                   cursor: pointer; border-radius: 6px; user-select: none; }
+  .alarm-summary:hover { background: #8881; }
   .time { font-size: 1.35rem; font-variant-numeric: tabular-nums; min-width: 4.5ch; }
   .label { flex: 1; min-width: 6ch; }
   .days-pill { font-size: .75rem; opacity: .7; }
   .disabled { opacity: .4; }
+  .alarm-caret { margin-left: auto; opacity: .4; font-size: 1.15rem; line-height: 1;
+                 transition: transform .15s; flex-shrink: 0; display: inline-block; }
+  .alarm-caret.open { transform: rotate(90deg); }
+  .alarm-panel { padding: .75rem 0 .6rem; border-top: 1px solid #8882; }
+  .alarm-field-row { display: grid; grid-template-columns: 1fr auto; gap: .4rem; margin-bottom: .4rem; }
+  .alarm-field-row label { margin-bottom: 0; }
+  .panel-footer { display: flex; gap: .4rem; align-items: center; margin-top: .6rem; flex-wrap: wrap; }
+  .panel-footer .spacer { flex: 1; }
 
   /* Audio library */
   .audio-toolbar { display: flex; gap: .5rem; align-items: center; margin-bottom: .6rem; }
@@ -93,10 +103,6 @@
   .audio-actions { display: flex; gap: .25rem; align-items: center; }
 
   .gradual-row { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-bottom: .5rem; }
-
-  .alarm-label-row { display: flex; align-items: center; gap: .2rem; }
-  .alarm-rename-form { display: none; align-items: center; gap: .3rem; }
-  .alarm-rename-form.active { display: flex; }
 
   input[type=file] { font-size: .9rem; }
   .upload-row { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; margin-top: .5rem; }
@@ -162,39 +168,78 @@
       <h2>Alarms</h2>
       <ul class="alarms">
         {% set day_names = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'] %}
+        {% set lib_names = audio_files | map(attribute='name') | list %}
         {% for a in alarms %}
-          <li class="{{ '' if a.enabled else 'disabled' }}">
-            <span class="time">{{ a.time }}</span>
-            <span class="label">
-              <span class="alarm-label-row" id="al-{{ loop.index }}">
-                <span>{{ a.label or '(no label)' }}</span>
-                <button type="button" class="icon" style="font-size:.85rem;" title="Rename"
-                        data-idx="{{ loop.index }}" data-label="{{ a.label or '' }}"
-                        onclick="startAlarmRename(this)"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></button>
+          <li id="ali-{{ a.id }}" class="{{ '' if a.enabled else 'disabled' }}">
+            <div class="alarm-summary" onclick="toggleAlarmPanel('{{ a.id }}')">
+              <span class="time">{{ a.time }}</span>
+              <span class="label">
+                {{ a.label or '(no label)' }}
+                <div class="days-pill">
+                  {% if a.days|length == 7 %}every day
+                  {% else %}{% for d in a.days %}{{ day_names[d] }}{% if not loop.last %} {% endif %}{% endfor %}
+                  {% endif %}
+                </div>
               </span>
-              <form class="alarm-rename-form" id="arf-{{ loop.index }}" method="post"
-                    action="{{ url_for('rename_alarm', alarm_id=a.id) }}">
-                <input class="rename-input" type="text" name="label" id="ari-{{ loop.index }}" placeholder="Label">
-                <button class="primary" type="submit" style="padding:.3rem .6rem;font-size:.85rem;">OK</button>
-                <button type="button" class="rename-cancel" onclick="cancelAlarmRename({{ loop.index }})">✕</button>
+              <span class="alarm-caret" id="caret-{{ a.id }}">›</span>
+            </div>
+            <div class="alarm-panel" id="ap-{{ a.id }}" hidden>
+              <form method="post" action="{{ url_for('edit_alarm', alarm_id=a.id) }}">
+                <div class="alarm-field-row">
+                  <label>Label
+                    <input type="text" name="label" value="{{ a.label or '' }}" placeholder="Wake up">
+                  </label>
+                  <label>Time
+                    <input type="time" name="time" value="{{ a.time }}" required>
+                  </label>
+                </div>
+                <div class="hint">Days (unchecked = every day)</div>
+                <div class="days">
+                  {% for i in range(7) %}
+                    <label><input type="checkbox" name="days" value="{{ i }}" {% if i in a.days %}checked{% endif %}>{{ day_names[i] }}</label>
+                  {% endfor %}
+                </div>
+                <label>Audio
+                  <select name="audio_file">
+                    <option value="" {% if a.audio_file not in lib_names %}selected{% endif %}>— Default tone —</option>
+                    {% for f in audio_files %}
+                      <option value="{{ f.name }}" {% if f.name == a.audio_file %}selected{% endif %}>{{ '★ ' if f.favorite else '' }}{{ f.name }}</option>
+                    {% endfor %}
+                  </select>
+                </label>
+                <div class="gradual-row">
+                  <label style="flex-direction:row;align-items:center;gap:.4rem;margin-bottom:.25rem;">
+                    <input type="checkbox" name="gradual" value="1" id="grad-{{ a.id }}"
+                           {% if a.gradual %}checked{% endif %}
+                           onchange="document.getElementById('graddur-{{ a.id }}').disabled=!this.checked">
+                    Gradually increase volume
+                  </label>
+                  <select name="gradual_minutes" id="graddur-{{ a.id }}"
+                          {% if not a.gradual %}disabled{% endif %}
+                          style="width:auto;font-size:.85rem;padding:.3rem .5rem;">
+                    <option value="2" {% if a.gradual_minutes == 2 %}selected{% endif %}>over 2 min</option>
+                    <option value="5" {% if a.gradual_minutes == 5 %}selected{% endif %}>over 5 min</option>
+                    <option value="10" {% if a.gradual_minutes not in [2, 5, 20] or a.gradual_minutes == 10 %}selected{% endif %}>over 10 min</option>
+                    <option value="20" {% if a.gradual_minutes == 20 %}selected{% endif %}>over 20 min</option>
+                  </select>
+                </div>
+                <label style="flex-direction:row;align-items:center;gap:.4rem;margin-bottom:.5rem;">
+                  <input type="checkbox" name="enabled" value="1" {% if a.enabled %}checked{% endif %}>
+                  Enabled
+                </label>
+                <div class="panel-footer">
+                  <button class="primary" type="submit">Save</button>
+                  <button type="button" onclick="closeAlarmPanel('{{ a.id }}')">Cancel</button>
+                  <span class="spacer"></span>
+                </div>
               </form>
-              <div class="days-pill">
-                {% if a.days|length == 7 %}every day
-                {% else %}{% for d in a.days %}{{ day_names[d] }}{% if not loop.last %} {% endif %}{% endfor %}
-                {% endif %}
-                · {{ a.audio_file }}
-                {% if a.gradual %}· <span title="Gradual volume ramp over {{ a.gradual_minutes }} min">↑vol {{ a.gradual_minutes }}m</span>{% endif %}
-              </div>
-            </span>
-            <form method="post" action="{{ url_for('toggle_alarm', alarm_id=a.id) }}">
-              <button type="submit">{{ 'Disable' if a.enabled else 'Enable' }}</button>
-            </form>
-            <form method="post" action="{{ url_for('delete_alarm', alarm_id=a.id) }}">
-              <button type="submit" class="danger">Delete</button>
-            </form>
+              <form method="post" action="{{ url_for('delete_alarm', alarm_id=a.id) }}" style="margin-top:.4rem;">
+                <button class="danger" type="submit">Delete alarm</button>
+              </form>
+            </div>
           </li>
         {% else %}
-          <li>No alarms yet.</li>
+          <li style="opacity:.5;padding:.5rem 0;">No alarms yet.</li>
         {% endfor %}
       </ul>
     </div>
@@ -314,27 +359,24 @@ document.addEventListener('keydown', e => {
   document.querySelectorAll('.rename-form.active').forEach(form => {
     cancelRename(form.id.replace('rf-', ''));
   });
-  document.querySelectorAll('.alarm-rename-form.active').forEach(form => {
-    cancelAlarmRename(form.id.replace('arf-', ''));
-  });
 });
 
-// Alarm rename
-function startAlarmRename(btn) {
-  const idx = btn.dataset.idx;
-  const currentLabel = btn.dataset.label;
-  document.getElementById('al-' + idx).style.display = 'none';
-  const arf = document.getElementById('arf-' + idx);
-  arf.classList.add('active');
-  const ari = document.getElementById('ari-' + idx);
-  ari.value = currentLabel;
-  ari.focus();
-  ari.select();
+// Alarm panels
+function toggleAlarmPanel(id) {
+  const panel = document.getElementById('ap-' + id);
+  const caret = document.getElementById('caret-' + id);
+  const isOpen = !panel.hidden;
+  document.querySelectorAll('.alarm-panel').forEach(p => { p.hidden = true; });
+  document.querySelectorAll('.alarm-caret').forEach(c => { c.classList.remove('open'); });
+  if (!isOpen) {
+    panel.hidden = false;
+    caret.classList.add('open');
+  }
 }
 
-function cancelAlarmRename(idx) {
-  document.getElementById('al-' + idx).style.display = '';
-  document.getElementById('arf-' + idx).classList.remove('active');
+function closeAlarmPanel(id) {
+  document.getElementById('ap-' + id).hidden = true;
+  document.getElementById('caret-' + id).classList.remove('open');
 }
 </script>
 <div id="toast"></div>

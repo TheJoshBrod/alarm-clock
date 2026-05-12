@@ -14,7 +14,7 @@
   .panel { padding: 1rem; border: 1px solid #8884; border-radius: 10px; margin-bottom: 1rem; }
 
   label { display: flex; flex-direction: column; font-size: .95rem; gap: .3rem; margin-bottom: .6rem; }
-  input[type=text], input[type=time] {
+  input[type=text], input[type=time], select {
     padding: .6rem .7rem; font-size: 1.05rem; border: 1px solid #8886; border-radius: 8px;
     background: transparent; color: inherit; width: 100%;
   }
@@ -22,11 +22,13 @@
   .days label { flex-direction: row; align-items: center; gap: .3rem; font-size: .9rem; margin-bottom: 0; }
   .hint { font-size: .8rem; opacity: .65; margin-bottom: .35rem; }
 
-  button.add {
-    width: 100%; padding: .7rem; font-size: 1.05rem; border-radius: 8px;
-    border: 1px solid #48a; color: #48a; background: transparent; cursor: pointer;
-  }
+  button { padding: .55rem .9rem; font-size: .95rem; border-radius: 8px;
+           border: 1px solid #8886; background: #8881; color: inherit; cursor: pointer; }
+  button:active { background: #8883; }
+  button.add { width: 100%; padding: .7rem; font-size: 1.05rem; border-color: #48a; color: #48a; background: transparent; }
   button.add:active { background: #48a2; }
+  button.primary { border-color: #48a; color: #48a; }
+  button.danger { border-color: #c44; color: #c44; }
 
   .banner {
     padding: .9rem 1rem; background: #c44; color: white; border-radius: 8px;
@@ -34,37 +36,21 @@
   }
 
   ul.alarms { list-style: none; padding: 0; margin: 0; }
-  ul.alarms li {
-    display: flex; align-items: center; gap: .5rem; padding: .65rem 0;
-    border-bottom: 1px solid #8882; flex-wrap: wrap;
-  }
+  ul.alarms li { display: block; border-bottom: 1px solid #8882; }
   ul.alarms li:last-child { border-bottom: none; }
+  .alarm-summary { display: flex; align-items: center; gap: .5rem; padding: .7rem .25rem;
+                   cursor: pointer; border-radius: 8px; user-select: none; }
+  .alarm-summary:active { background: #8881; }
   .time { font-size: 1.5rem; font-variant-numeric: tabular-nums; min-width: 4.5ch; }
   .label { flex: 1; }
   .days-pill { font-size: .75rem; opacity: .7; }
   .disabled { opacity: .4; }
-
-  button.toggle {
-    padding: .5rem .9rem; font-size: .95rem; border-radius: 8px;
-    border: 1px solid #8886; background: #8881; color: inherit; cursor: pointer;
-  }
-  button.toggle:active { background: #8883; }
-
-  button.icon { padding: .2rem .35rem; font-size: .95rem; border: none; background: none;
-                opacity: .5; cursor: pointer; }
-  button.icon:active { opacity: 1; }
-
-  .alarm-label-row { display: flex; align-items: center; gap: .2rem; }
-  .alarm-rename-form { display: none; align-items: center; gap: .3rem; width: 100%; margin-top: .2rem; }
-  .alarm-rename-form.active { display: flex; }
-  .rename-input { flex: 1; padding: .45rem .6rem; font-size: .95rem;
-                  border: 1px solid #48a; border-radius: 7px; background: transparent; color: inherit; }
-  button.ok { padding: .45rem .7rem; font-size: .9rem; border-radius: 7px;
-              border: 1px solid #48a; color: #48a; background: transparent; cursor: pointer; }
-  button.ok:active { background: #48a2; }
-  button.cancel-btn { padding: .45rem .55rem; font-size: .85rem; border-radius: 7px;
-                      border: 1px solid #8886; background: #8881; color: inherit; cursor: pointer; }
-  button.cancel-btn:active { background: #8883; }
+  .alarm-caret { margin-left: auto; opacity: .4; font-size: 1.15rem; line-height: 1;
+                 transition: transform .15s; flex-shrink: 0; display: inline-block; }
+  .alarm-caret.open { transform: rotate(90deg); }
+  .alarm-panel { padding: .75rem 0 .75rem; border-top: 1px solid #8882; }
+  .panel-footer { display: flex; gap: .5rem; margin-top: .75rem; flex-wrap: wrap; }
+  .gradual-row { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-bottom: .6rem; }
 </style>
 </head>
 <body>
@@ -99,60 +85,95 @@
   <h2>Alarms</h2>
   <ul class="alarms">
     {% set day_names = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'] %}
+    {% set lib_names = audio_files | map(attribute='name') | list %}
     {% for a in alarms %}
-      <li class="{{ '' if a.enabled else 'disabled' }}">
-        <span class="time">{{ a.time }}</span>
-        <span class="label">
-          <span class="alarm-label-row" id="al-{{ loop.index }}">
-            <span>{{ a.label or '(no label)' }}</span>
-            <button type="button" class="icon" title="Rename"
-                    data-idx="{{ loop.index }}" data-label="{{ a.label or '' }}"
-                    onclick="startAlarmRename(this)"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></button>
+      <li id="ali-{{ a.id }}" class="{{ '' if a.enabled else 'disabled' }}">
+        <div class="alarm-summary" onclick="toggleAlarmPanel('{{ a.id }}')">
+          <span class="time">{{ a.time }}</span>
+          <span class="label">
+            {{ a.label or '(no label)' }}
+            <div class="days-pill">
+              {% if a.days|length == 7 %}every day
+              {% else %}{% for d in a.days %}{{ day_names[d] }}{% if not loop.last %} {% endif %}{% endfor %}
+              {% endif %}
+            </div>
           </span>
-          <form class="alarm-rename-form" id="arf-{{ loop.index }}" method="post"
-                action="{{ url_for('rename_alarm', alarm_id=a.id) }}">
-            <input class="rename-input" type="text" name="label" id="ari-{{ loop.index }}" placeholder="Label">
-            <button class="ok" type="submit">OK</button>
-            <button type="button" class="cancel-btn" onclick="cancelAlarmRename({{ loop.index }})">✕</button>
+          <span class="alarm-caret" id="caret-{{ a.id }}">›</span>
+        </div>
+        <div class="alarm-panel" id="ap-{{ a.id }}" hidden>
+          <form method="post" action="{{ url_for('edit_alarm', alarm_id=a.id) }}">
+            <label>Label
+              <input type="text" name="label" value="{{ a.label or '' }}" placeholder="Wake up">
+            </label>
+            <label>Time
+              <input type="time" name="time" value="{{ a.time }}" required>
+            </label>
+            <div class="hint">Days (unchecked = every day)</div>
+            <div class="days">
+              {% for i in range(7) %}
+                <label><input type="checkbox" name="days" value="{{ i }}" {% if i in a.days %}checked{% endif %}>{{ day_names[i] }}</label>
+              {% endfor %}
+            </div>
+            <label>Audio
+              <select name="audio_file">
+                <option value="" {% if a.audio_file not in lib_names %}selected{% endif %}>— Default tone —</option>
+                {% for f in audio_files %}
+                  <option value="{{ f.name }}" {% if f.name == a.audio_file %}selected{% endif %}>{{ f.name }}</option>
+                {% endfor %}
+              </select>
+            </label>
+            <div class="gradual-row">
+              <label style="flex-direction:row;align-items:center;gap:.4rem;margin-bottom:0;">
+                <input type="checkbox" name="gradual" value="1" id="grad-{{ a.id }}"
+                       {% if a.gradual %}checked{% endif %}
+                       onchange="document.getElementById('graddur-{{ a.id }}').disabled=!this.checked">
+                Gradually increase volume
+              </label>
+              <select name="gradual_minutes" id="graddur-{{ a.id }}"
+                      {% if not a.gradual %}disabled{% endif %}
+                      style="width:auto;font-size:.9rem;padding:.4rem .6rem;">
+                <option value="2" {% if a.gradual_minutes == 2 %}selected{% endif %}>over 2 min</option>
+                <option value="5" {% if a.gradual_minutes == 5 %}selected{% endif %}>over 5 min</option>
+                <option value="10" {% if a.gradual_minutes not in [2, 5, 20] or a.gradual_minutes == 10 %}selected{% endif %}>over 10 min</option>
+                <option value="20" {% if a.gradual_minutes == 20 %}selected{% endif %}>over 20 min</option>
+              </select>
+            </div>
+            <label style="flex-direction:row;align-items:center;gap:.4rem;margin-bottom:.5rem;">
+              <input type="checkbox" name="enabled" value="1" {% if a.enabled %}checked{% endif %}>
+              Enabled
+            </label>
+            <div class="panel-footer">
+              <button class="primary" type="submit">Save</button>
+              <button type="button" onclick="closeAlarmPanel('{{ a.id }}')">Cancel</button>
+            </div>
           </form>
-          <div class="days-pill">
-            {% if a.days|length == 7 %}every day
-            {% else %}{% for d in a.days %}{{ day_names[d] }}{% if not loop.last %} {% endif %}{% endfor %}
-            {% endif %}
-          </div>
-        </span>
-        <form method="post" action="{{ url_for('toggle_alarm', alarm_id=a.id) }}">
-          <button class="toggle" type="submit">{{ 'Disable' if a.enabled else 'Enable' }}</button>
-        </form>
+          <form method="post" action="{{ url_for('delete_alarm', alarm_id=a.id) }}" style="margin-top:.5rem;">
+            <button class="danger" type="submit">Delete alarm</button>
+          </form>
+        </div>
       </li>
     {% else %}
-      <li>No alarms yet.</li>
+      <li style="opacity:.5;padding:.7rem 0;">No alarms yet.</li>
     {% endfor %}
   </ul>
+
 <script>
-function startAlarmRename(btn) {
-  const idx = btn.dataset.idx;
-  const currentLabel = btn.dataset.label;
-  document.getElementById('al-' + idx).style.display = 'none';
-  const arf = document.getElementById('arf-' + idx);
-  arf.classList.add('active');
-  const ari = document.getElementById('ari-' + idx);
-  ari.value = currentLabel;
-  ari.focus();
-  ari.select();
+function toggleAlarmPanel(id) {
+  const panel = document.getElementById('ap-' + id);
+  const caret = document.getElementById('caret-' + id);
+  const isOpen = !panel.hidden;
+  document.querySelectorAll('.alarm-panel').forEach(p => { p.hidden = true; });
+  document.querySelectorAll('.alarm-caret').forEach(c => { c.classList.remove('open'); });
+  if (!isOpen) {
+    panel.hidden = false;
+    caret.classList.add('open');
+  }
 }
 
-function cancelAlarmRename(idx) {
-  document.getElementById('al-' + idx).style.display = '';
-  document.getElementById('arf-' + idx).classList.remove('active');
+function closeAlarmPanel(id) {
+  document.getElementById('ap-' + id).hidden = true;
+  document.getElementById('caret-' + id).classList.remove('open');
 }
-
-document.addEventListener('keydown', e => {
-  if (e.key !== 'Escape') return;
-  document.querySelectorAll('.alarm-rename-form.active').forEach(form => {
-    cancelAlarmRename(form.id.replace('arf-', ''));
-  });
-});
 </script>
 </body>
 </html>

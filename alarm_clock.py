@@ -282,7 +282,7 @@ def index():
         alarms = sorted(_alarms, key=lambda a: a["time"])
 
     if use_mobile:
-        return render_template("mobile.html", alarms=alarms, active=_alarm_active.is_set())
+        return render_template("mobile.html", alarms=alarms, active=_alarm_active.is_set(), audio_files=_library_audio_files())
     return render_template("desktop.html", alarms=alarms, active=_alarm_active.is_set(),
                            audio_files=_library_audio_files(), audio_meta=_audio_meta)
 
@@ -423,13 +423,43 @@ def delete_alarm(alarm_id):
     return redirect(url_for("index"))
 
 
-@app.route("/alarms/<alarm_id>/rename", methods=["POST"])
-def rename_alarm(alarm_id):
-    new_label = request.form.get("label", "").strip()
+@app.route("/alarms/<alarm_id>/edit", methods=["POST"])
+def edit_alarm(alarm_id):
+    label = request.form.get("label", "").strip()
+    time_str = request.form.get("time", "").strip()
+    days = request.form.getlist("days")
+    audio_file_choice = request.form.get("audio_file", "").strip()
+    gradual = bool(request.form.get("gradual"))
+    try:
+        gradual_minutes = max(1, int(request.form.get("gradual_minutes", 10)))
+    except ValueError:
+        gradual_minutes = 10
+    enabled = request.form.get("enabled") == "1"
+    days_int = sorted({int(d) for d in days}) if days else list(range(7))
+
+    if not time_str:
+        return "time is required", 400
+    try:
+        datetime.strptime(time_str, "%H:%M")
+    except ValueError:
+        return "time must be HH:MM", 400
+
     with _state_lock:
         for a in _alarms:
             if a["id"] == alarm_id:
-                a["label"] = new_label
+                a["label"] = label
+                a["time"] = time_str
+                a["days"] = days_int
+                a["gradual"] = gradual
+                a["gradual_minutes"] = gradual_minutes
+                a["enabled"] = enabled
+                if audio_file_choice and (AUDIO_DIR / audio_file_choice).exists():
+                    a["audio_file"] = audio_file_choice
+                elif not audio_file_choice and not _TONE_RE.match(a["audio_file"]):
+                    wav_path = AUDIO_DIR / f"{a['id']}.wav"
+                    if not wav_path.exists():
+                        generate_tone_wav(wav_path)
+                    a["audio_file"] = wav_path.name
                 break
         save_alarms()
     return redirect(url_for("index"))
