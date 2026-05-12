@@ -438,22 +438,22 @@ button.danger:active { background: var(--danger-dim); }
             <div class="gradual-wrap">
               <label class="switch-row" style="margin-bottom:0;">
                 <span class="switch-wrap">
-                  <input type="checkbox" name="gradual" value="1" id="grad-{{ a.id }}"
-                         {% if a.gradual %}checked{% endif %}
+                  <input type="checkbox" id="grad-{{ a.id }}"
+                         {% if a.fade_in_seconds > 0 %}checked{% endif %}
                          onchange="var sub=this.closest('.gradual-wrap').querySelector('.gradual-sub');sub.hidden=!this.checked;sub.querySelector('select').disabled=!this.checked;">
                   <span class="switch-track"></span>
                   <span class="switch-thumb"></span>
                 </span>
-                Gradually increase volume
+                Fade in volume
               </label>
-              <div class="gradual-sub" {% if not a.gradual %}hidden{% endif %}>
+              <div class="gradual-sub" {% if not a.fade_in_seconds %}hidden{% endif %}>
                 <span>over</span>
-                <select name="gradual_minutes" id="graddur-{{ a.id }}"
-                        {% if not a.gradual %}disabled{% endif %} class="gradual-dur">
-                  <option value="2"  {% if a.gradual_minutes == 2  %}selected{% endif %}>2 min</option>
-                  <option value="5"  {% if a.gradual_minutes == 5  %}selected{% endif %}>5 min</option>
-                  <option value="10" {% if a.gradual_minutes not in [2,5,20] or a.gradual_minutes == 10 %}selected{% endif %}>10 min</option>
-                  <option value="20" {% if a.gradual_minutes == 20 %}selected{% endif %}>20 min</option>
+                <select name="fade_in_seconds" id="graddur-{{ a.id }}"
+                        {% if not a.fade_in_seconds %}disabled{% endif %} class="gradual-dur">
+                  <option value="30"  {% if a.fade_in_seconds == 30  %}selected{% endif %}>30 sec</option>
+                  <option value="60"  {% if a.fade_in_seconds == 60  %}selected{% endif %}>1 min</option>
+                  <option value="120" {% if a.fade_in_seconds == 120 %}selected{% endif %}>2 min</option>
+                  <option value="300" {% if a.fade_in_seconds not in [30,60,120] or a.fade_in_seconds == 300 %}selected{% endif %}>5 min</option>
                 </select>
               </div>
             </div>

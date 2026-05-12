@@ -11,7 +11,7 @@ import wave
 from datetime import datetime
 from pathlib import Path
 
-from flask import Flask, jsonify, redirect, render_template, request, url_for
+from flask import Flask, jsonify, redirect, render_template, request, send_from_directory, url_for
 from werkzeug.utils import secure_filename
 
 from aiy.board import Board, Led
@@ -40,7 +40,7 @@ _active_proc_lock = threading.Lock()
 _board = None
 _led_lock = threading.Lock()
 
-_original_volume = None  # int or None; saved before gradual ramp, restored on silence
+_original_volume = None  # int or None; saved before fade-in ramp, restored on silence
 
 # Regex to identify auto-generated per-alarm tone files (8 hex chars + .wav).
 # These are owned by their alarm and deleted with it.
@@ -56,6 +56,17 @@ def load_alarms():
     if ALARMS_FILE.exists():
         with ALARMS_FILE.open() as f:
             _alarms = json.load(f)
+        # Migrate old gradual/gradual_minutes fields to fade_in_seconds/snooze_minutes/volume.
+        changed = False
+        for a in _alarms:
+            if "gradual" in a or "gradual_minutes" in a:
+                grad_mins = int(a.pop("gradual_minutes", 10)) if a.pop("gradual", False) else 0
+                a.setdefault("fade_in_seconds", grad_mins * 60)
+                a.setdefault("snooze_minutes", 9)
+                a.setdefault("volume", 80)
+                changed = True
+        if changed:
+            save_alarms()
     else:
         _alarms = []
 
@@ -170,16 +181,19 @@ def trigger_alarm(alarm):
         if _board is not None:
             _board.led.state = Led.BLINK
     print(f"ALARM: {alarm.get('label') or alarm['id']}")
+    vol = max(0, min(100, int(alarm.get("volume", 80))))
+    fade_in = max(0, int(alarm.get("fade_in_seconds", 0)))
+    if fade_in > 0:
+        global _original_volume
+        _original_volume = _get_alsa_volume()
+        threading.Thread(
+            target=_volume_ramp_loop, args=(10, vol, fade_in), daemon=True
+        ).start()
+    else:
+        _set_alsa_volume(vol)
     threading.Thread(
         target=play_loop_until_stopped, args=(wav_path,), daemon=True
     ).start()
-    if alarm.get("gradual"):
-        global _original_volume
-        _original_volume = _get_alsa_volume()
-        duration_sec = int(alarm.get("gradual_minutes", 10)) * 60
-        threading.Thread(
-            target=_volume_ramp_loop, args=(10, 100, duration_sec), daemon=True
-        ).start()
 
 
 def silence_alarm():
@@ -301,6 +315,8 @@ def index():
         weekday_name=now.strftime("%A"),
         date_str=now.strftime("%b %-d"),
         tod=tod,
+        today_weekday=now.weekday(),  # Monday=0
+        current_hhmm=now.strftime("%H:%M"),
     )
 
     if use_mobile:
@@ -312,6 +328,12 @@ def index():
 def silence():
     silence_alarm()
     return redirect(url_for("index"))
+
+
+@app.route("/audio/<filename>")
+def serve_audio(filename):
+    safe = secure_filename(filename)
+    return send_from_directory(AUDIO_DIR, safe)
 
 
 @app.route("/audio/upload", methods=["POST"])
@@ -387,11 +409,18 @@ def create_alarm():
     time_str = request.form.get("time", "").strip()
     days = request.form.getlist("days")
     audio_file_choice = request.form.get("audio_file", "").strip()
-    gradual = bool(request.form.get("gradual"))
     try:
-        gradual_minutes = max(1, int(request.form.get("gradual_minutes", 10)))
+        fade_in_seconds = max(0, int(request.form.get("fade_in_seconds", 0)))
     except ValueError:
-        gradual_minutes = 10
+        fade_in_seconds = 0
+    try:
+        snooze_minutes = max(0, int(request.form.get("snooze_minutes", 9)))
+    except ValueError:
+        snooze_minutes = 9
+    try:
+        volume = max(0, min(100, int(request.form.get("volume", 80))))
+    except ValueError:
+        volume = 80
     days_int = sorted({int(d) for d in days}) if days else list(range(7))
 
     if not time_str:
@@ -417,8 +446,9 @@ def create_alarm():
         "days": days_int,
         "audio_file": audio_filename,
         "enabled": True,
-        "gradual": gradual,
-        "gradual_minutes": gradual_minutes,
+        "fade_in_seconds": fade_in_seconds,
+        "snooze_minutes": snooze_minutes,
+        "volume": volume,
     }
     with _state_lock:
         _alarms.append(alarm)
@@ -450,11 +480,18 @@ def edit_alarm(alarm_id):
     time_str = request.form.get("time", "").strip()
     days = request.form.getlist("days")
     audio_file_choice = request.form.get("audio_file", "").strip()
-    gradual = bool(request.form.get("gradual"))
     try:
-        gradual_minutes = max(1, int(request.form.get("gradual_minutes", 10)))
+        fade_in_seconds = max(0, int(request.form.get("fade_in_seconds", 0)))
     except ValueError:
-        gradual_minutes = 10
+        fade_in_seconds = 0
+    try:
+        snooze_minutes = max(0, int(request.form.get("snooze_minutes", 9)))
+    except ValueError:
+        snooze_minutes = 9
+    try:
+        volume = max(0, min(100, int(request.form.get("volume", 80))))
+    except ValueError:
+        volume = 80
     enabled = request.form.get("enabled") == "1"
     days_int = sorted({int(d) for d in days}) if days else list(range(7))
 
@@ -471,8 +508,9 @@ def edit_alarm(alarm_id):
                 a["label"] = label
                 a["time"] = time_str
                 a["days"] = days_int
-                a["gradual"] = gradual
-                a["gradual_minutes"] = gradual_minutes
+                a["fade_in_seconds"] = fade_in_seconds
+                a["snooze_minutes"] = snooze_minutes
+                a["volume"] = volume
                 a["enabled"] = enabled
                 if audio_file_choice and (AUDIO_DIR / audio_file_choice).exists():
                     a["audio_file"] = audio_file_choice

@@ -15,7 +15,6 @@
   --ease:      cubic-bezier(.2,.7,.1,1);
   --dur-f: 110ms; --dur-m: 220ms; --dur-s: 420ms;
 
-  /* day palette (default) */
   --bg-a: #f4ede2; --bg-b: #cfe0f0;
   --ink: #1a1814;
   --ink-dim: rgba(26,24,20,.5);
@@ -78,211 +77,233 @@ body::before {
 
 /* ── Page shell ── */
 .page {
-  max-width: 1040px;
-  margin: 0 auto;
-  padding: 0 1.5rem;
+  padding: .75rem 1.25rem 0;
   height: 100dvh;
   display: flex;
   flex-direction: column;
-}
-
-/* ── Hero ── */
-.hero {
-  display: flex; align-items: flex-end; justify-content: space-between;
-  padding: 2.25rem 0 2rem; gap: 1rem;
-}
-.hero-clock {
-  font-family: var(--font-disp);
-  font-size: clamp(3.5rem, 10vw, 7.5rem);
-  font-weight: 300;
-  font-optical-sizing: auto;
-  font-variant-numeric: tabular-nums;
-  line-height: 1; letter-spacing: -.02em;
-}
-.hero-meta { text-align: right; display: flex; flex-direction: column; gap: .4rem; padding-bottom: .3rem; }
-.hero-date { font-size: .88rem; color: var(--ink-dim); font-weight: 500; }
-.hero-pill {
-  display: inline-flex; align-items: center; gap: .3rem;
-  padding: .28rem .7rem; border-radius: 99px;
-  font-size: .72rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
-  border: 1px solid var(--border); background: var(--surface);
-  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-  color: var(--ink-dim);
-}
-.hero-pill.ringing {
-  background: rgba(204,68,68,.15); border-color: rgba(204,68,68,.4); color: #c44;
-}
-@media (prefers-reduced-motion: no-preference) {
-  .hero-pill.ringing { animation: pill-blink 1.3s ease-in-out infinite; }
-  @keyframes pill-blink { 50% { opacity: .55; } }
+  gap: .65rem;
 }
 
 /* ── Ringing banner ── */
 .banner {
   display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap;
-  padding: 1.25rem 1.5rem; margin-bottom: 1.5rem;
+  padding: 1rem 1.5rem; flex-shrink: 0;
   border-color: rgba(204,68,68,.3);
   background: rgba(204,68,68,.08);
 }
-.led-ring {
-  flex-shrink: 0; width: 2.75rem; height: 2.75rem;
-  display: flex; align-items: center; justify-content: center; position: relative;
-}
+.led-ring { flex-shrink: 0; width: 2.2rem; height: 2.2rem; display: flex; align-items: center; justify-content: center; }
 .led-ring svg { width: 100%; height: 100%; }
 @media (prefers-reduced-motion: no-preference) {
   .led-outer { transform-origin: 50% 50%; animation: led-pulse 1.4s ease-in-out infinite; }
-  @keyframes led-pulse {
-    0%, 100% { transform: scale(1); opacity: .7; }
-    50% { transform: scale(1.4); opacity: 0; }
-  }
+  @keyframes led-pulse { 0%, 100% { transform: scale(1); opacity: .7; } 50% { transform: scale(1.4); opacity: 0; } }
 }
 .banner-body { flex: 1; }
-.banner-label { font-size: 1rem; font-weight: 700; color: #c44; margin-bottom: .5rem; }
+.banner-label { font-size: .95rem; font-weight: 700; color: #c44; margin-bottom: .4rem; }
 button.silence {
-  padding: .65rem 1.5rem; font-size: 1rem; font-weight: 700;
+  padding: .55rem 1.3rem; font-size: .92rem; font-weight: 700;
   border-radius: 12px; border: none;
-  background: #c44; color: white; cursor: pointer;
-  font-family: var(--font-ui);
+  background: #c44; color: white; cursor: pointer; font-family: var(--font-ui);
   transition: background var(--dur-f) var(--ease), transform var(--dur-f) var(--ease);
 }
 button.silence:hover { background: #b33; }
 button.silence:active { transform: scale(.97); }
-button.silence:focus-visible { outline: 2px solid #c44; outline-offset: 3px; }
 
-/* ── Layout ── */
-.layout {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem;
+/* ── Dashboard grid ── */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: minmax(200px, 20%) minmax(340px, 45%) minmax(280px, 35%);
+  gap: 1rem;
   flex: 1; min-height: 0;
+  padding-bottom: .75rem;
 }
-.layout > div {
-  overflow-y: auto; min-height: 0; padding-bottom: 2rem;
-  scrollbar-width: thin;
-  scrollbar-color: var(--ink-dim) transparent;
+
+/* ── Column scroll ── */
+.col-scroll {
+  flex: 1; min-height: 0; overflow-y: auto; padding-bottom: 1.5rem;
+  scrollbar-width: thin; scrollbar-color: var(--ink-dim) transparent;
 }
-.layout > div::-webkit-scrollbar { width: 6px; }
-.layout > div::-webkit-scrollbar-track { background: transparent; }
-.layout > div::-webkit-scrollbar-thumb {
-  background: var(--ink-dim); border-radius: 99px;
-}
-@media (max-width: 660px) { .layout { grid-template-columns: 1fr; } }
+.col-scroll::-webkit-scrollbar { width: 5px; }
+.col-scroll::-webkit-scrollbar-track { background: transparent; }
+.col-scroll::-webkit-scrollbar-thumb { background: var(--ink-dim); border-radius: 99px; }
 
 /* ── Section head ── */
 .section-head {
-  font-size: .7rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
-  color: var(--ink-dim); padding: 0 .25rem .6rem;
+  font-size: .68rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--ink-dim); padding: 0 .2rem .55rem;
 }
 
-/* ── Add-alarm card ── */
-.add-alarm-card { margin-bottom: .75rem; overflow: hidden; }
-.add-alarm-toggle {
-  width: 100%; display: flex; align-items: center; gap: .7rem;
-  padding: .9rem 1.15rem; background: transparent; border: none; color: var(--ink);
-  font-family: var(--font-ui); font-size: .95rem; font-weight: 600; cursor: pointer;
-  border-radius: 18px; text-align: left;
-  transition: background var(--dur-f) var(--ease);
+/* ── Sidebar ── */
+.sidebar {
+  display: flex; flex-direction: column; gap: .65rem;
+  min-height: 0; overflow-y: auto; padding-bottom: 1rem;
+  scrollbar-width: none;
 }
-.add-alarm-toggle:hover { background: var(--surface-hi); }
-.add-alarm-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.add-icon {
-  width: 1.6rem; height: 1.6rem; border-radius: 50%;
+.sidebar::-webkit-scrollbar { display: none; }
+
+/* Clock card */
+.clock-card { text-align: center; padding: 1.25rem 1.15rem 1rem; }
+.hero-clock {
+  font-family: var(--font-disp);
+  font-size: clamp(2.8rem, 4vw, 4.5rem);
+  font-weight: 300; font-optical-sizing: auto;
+  font-variant-numeric: tabular-nums;
+  line-height: 1; letter-spacing: -.02em;
+}
+.hero-date { font-size: .82rem; color: var(--ink-dim); font-weight: 500; margin-top: .35rem; }
+.hero-pill {
+  display: inline-flex; align-items: center; gap: .3rem;
+  padding: .22rem .6rem; border-radius: 99px; margin-top: .5rem;
+  font-size: .68rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  border: 1px solid var(--border); background: var(--surface);
+  backdrop-filter: blur(8px); color: var(--ink-dim);
+}
+.hero-pill.ringing { background: rgba(204,68,68,.15); border-color: rgba(204,68,68,.4); color: #c44; }
+@media (prefers-reduced-motion: no-preference) {
+  .hero-pill.ringing { animation: pill-blink 1.3s ease-in-out infinite; }
+  @keyframes pill-blink { 50% { opacity: .55; } }
+}
+
+/* Next alarm widget */
+.next-alarm-card { padding: .9rem 1.15rem; }
+.next-alarm-card .section-head { padding-bottom: .4rem; }
+.next-alarm-name { font-weight: 700; font-size: .9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.next-alarm-time {
+  font-family: var(--font-disp); font-size: 2rem; font-weight: 600;
+  font-variant-numeric: tabular-nums; line-height: 1; letter-spacing: -.02em;
+  margin: .2rem 0 .25rem;
+}
+.next-alarm-countdown { font-size: .78rem; color: var(--ink-dim); }
+.next-alarm-pips { display: flex; gap: .18rem; margin-top: .35rem; }
+
+/* Today overview */
+.today-overview-card { padding: .9rem 1.15rem; }
+.today-overview-card .section-head { padding-bottom: .4rem; }
+.overview-row {
+  display: flex; align-items: center; gap: .5rem;
+  padding: .28rem 0; border-bottom: 1px solid var(--border); font-size: .82rem;
+}
+.overview-row:last-child { border-bottom: none; }
+.overview-icon { font-size: .95rem; flex-shrink: 0; opacity: .65; width: 1.3rem; text-align: center; }
+.overview-label { color: var(--ink-dim); flex: 1; }
+.overview-value { font-weight: 600; font-size: .8rem; }
+
+/* FAB */
+.fab {
+  width: 2.5rem; height: 2.5rem; border-radius: 50%;
   background: var(--accent); color: var(--accent-fg);
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
-  transition: transform var(--dur-m) var(--ease);
+  border: none; cursor: pointer; font-family: var(--font-ui);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  box-shadow: 0 6px 20px -6px rgba(0,0,0,.4);
+  transition: background var(--dur-f) var(--ease), transform var(--dur-f) var(--ease);
+  margin-top: auto; align-self: flex-start;
 }
-.add-alarm-toggle[aria-expanded="true"] .add-icon { transform: rotate(45deg); }
-.add-form-body {
-  padding: .5rem 1.15rem 1.1rem;
-  border-top: 1px solid var(--border);
+.fab:hover { filter: brightness(1.1); transform: scale(1.07); }
+.fab:active { transform: scale(.94) !important; }
+.fab:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+.settings-link {
+  font-size: .78rem; color: var(--ink-dim); text-decoration: none;
+  display: inline-flex; align-items: center; gap: .35rem; padding: .25rem 0;
+  transition: color var(--dur-f) var(--ease); align-self: flex-start;
 }
+.settings-link:hover { color: var(--ink); }
 
-/* ── Alarm list ── */
-.alarms { list-style: none; display: flex; flex-direction: column; gap: .6rem; }
-.alarm-item { overflow: clip; }
-.alarm-item.alarm-disabled { opacity: .45; }
+/* ── Alarms column ── */
+.alarms-col { display: flex; flex-direction: column; min-height: 0; }
+.feed-group { margin-bottom: .75rem; }
 
+/* Alarm card */
 @media (prefers-reduced-motion: no-preference) {
   @keyframes card-in {
     from { opacity: 0; transform: translateY(8px); }
     to   { opacity: 1; transform: translateY(0); }
   }
-  .alarm-item {
+  .alarm-card {
     animation: card-in var(--dur-m) var(--ease) both;
-    animation-delay: calc(var(--i, 0) * 50ms);
+    animation-delay: calc(var(--i, 0) * 45ms);
   }
 }
+.alarm-card {
+  display: flex; align-items: center; gap: .65rem;
+  padding: .8rem 1rem .8rem 1.1rem;
+  margin-bottom: .5rem; cursor: pointer; user-select: none;
+  border: 2px solid transparent; overflow: clip;
+  transition: background var(--dur-f) var(--ease),
+              border-color var(--dur-m) var(--ease),
+              box-shadow var(--dur-m) var(--ease);
+}
+.alarm-card:hover { background: var(--surface-hi); }
+.alarm-card.selected {
+  border-color: var(--accent); background: var(--surface-hi);
+  box-shadow: 0 4px 20px -8px rgba(0,0,0,.28);
+}
+.alarm-card.alarm-disabled { opacity: .45; }
+.alarm-card-body { flex: 1; min-width: 0; }
+.alarm-card-time {
+  font-family: var(--font-disp); font-size: 1.6rem; font-weight: 600;
+  font-variant-numeric: tabular-nums; line-height: 1; letter-spacing: -.01em;
+}
+.alarm-card-meta {
+  display: flex; align-items: center; gap: .3rem; margin-top: .15rem;
+  font-size: .77rem; color: var(--ink-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.meta-sep { opacity: .45; }
+.alarm-card .days-display { display: flex; gap: .18rem; margin-top: .32rem; }
+.alarm-card-right { flex-shrink: 0; }
 
-.alarm-summary {
-  display: flex; align-items: center; gap: .65rem; padding: .85rem 1.15rem;
-  cursor: pointer; border-radius: 18px; user-select: none;
-  transition: background var(--dur-f) var(--ease);
+/* Show disabled row */
+.show-disabled-row {
+  padding: .5rem .2rem; font-size: .8rem; color: var(--ink-dim);
+  cursor: pointer; user-select: none; display: flex; align-items: center; gap: .38rem;
+  transition: color var(--dur-f) var(--ease);
 }
-.alarm-summary:hover { background: var(--surface-hi); }
-.alarm-time {
-  font-family: var(--font-disp); font-size: 1.65rem; font-weight: 600;
-  font-variant-numeric: tabular-nums; min-width: 4.4ch; line-height: 1;
-  letter-spacing: -.01em;
-}
-.alarm-info { flex: 1; min-width: 0; }
-.alarm-lbl {
-  font-weight: 600; font-size: .9rem;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  display: flex; align-items: center; gap: .4rem;
-}
-.paused-pill {
-  font-size: .65rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
-  color: var(--ink-dim); border: 1px solid var(--border); border-radius: 99px;
-  padding: .1rem .45rem; flex-shrink: 0;
-}
-.days-display { display: flex; gap: .2rem; margin-top: .35rem; }
+.show-disabled-row:hover { color: var(--ink); }
+
+/* ── Day pip ── */
 .day-pip {
-  width: 1.3rem; height: 1.3rem; border-radius: 50%;
-  font-size: .65rem; font-weight: 700;
+  width: 1.2rem; height: 1.2rem; border-radius: 50%;
+  font-size: .6rem; font-weight: 700;
   display: flex; align-items: center; justify-content: center;
   border: 1.5px solid var(--border); color: var(--ink-dim);
 }
 .day-pip.active { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
-.alarm-caret {
-  margin-left: .15rem; opacity: .4; font-size: 1.15rem; line-height: 1;
-  transition: transform var(--dur-f) var(--ease); flex-shrink: 0; display: inline-block;
-}
-.alarm-caret.open { transform: rotate(90deg); }
 
-/* alarm expand panel */
-.alarm-panel {
-  border-top: 1px solid var(--border);
-  padding: .9rem 1.15rem .85rem;
+/* ── Detail column ── */
+.detail-col { display: flex; flex-direction: column; min-height: 0; }
+.detail-scroll {
+  flex: 1; min-height: 0; overflow-y: auto; padding-bottom: 1.5rem;
+  scrollbar-width: thin; scrollbar-color: var(--ink-dim) transparent;
+  display: flex; flex-direction: column;
 }
-@media (prefers-reduced-motion: no-preference) {
-  @keyframes panel-in {
-    from { opacity: 0; transform: translateY(-4px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-  .alarm-panel { animation: panel-in var(--dur-m) var(--ease) both; }
+.detail-scroll::-webkit-scrollbar { width: 5px; }
+.detail-scroll::-webkit-scrollbar-track { background: transparent; }
+.detail-scroll::-webkit-scrollbar-thumb { background: var(--ink-dim); border-radius: 99px; }
+.detail-empty {
+  flex: 1; display: flex; align-items: center; justify-content: center; min-height: 14rem;
 }
+.detail-pane { padding: 1.1rem 1.2rem; }
 
 /* ── Form fields ── */
 label.field {
   display: flex; flex-direction: column; gap: .3rem;
-  font-size: .72rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  font-size: .7rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
   color: var(--ink-dim); margin-bottom: .6rem;
 }
 .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
 .field-row label.field { margin-bottom: 0; }
 
 input[type=text], input[type=time] {
-  padding: .5rem .7rem; font-size: .92rem; font-family: var(--font-ui);
+  padding: .48rem .7rem; font-size: .9rem; font-family: var(--font-ui);
   border: 1px solid var(--border); border-radius: 10px;
   background: var(--surface); color: var(--ink); width: 100%;
   transition: border-color var(--dur-f) var(--ease), box-shadow var(--dur-f) var(--ease);
 }
 input[type=text]:focus, input[type=time]:focus {
-  outline: none; border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-dim);
+  outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim);
 }
 
-/* ── Day-dot pickers (in forms) ── */
-.day-dots { display: flex; gap: .3rem; flex-wrap: wrap; margin-bottom: .6rem; }
+/* ── Day-dot pickers ── */
+.day-dots { display: flex; gap: .28rem; flex-wrap: wrap; margin-bottom: .6rem; }
 .day-dot { position: relative; }
 .day-dot input {
   position: absolute; clip: rect(0 0 0 0); clip-path: inset(100%);
@@ -290,8 +311,8 @@ input[type=text]:focus, input[type=time]:focus {
 }
 .day-dot span {
   display: flex; align-items: center; justify-content: center;
-  width: 2.1rem; height: 2.1rem; border-radius: 50%;
-  border: 1.5px solid var(--border); font-size: .7rem; font-weight: 700;
+  width: 2rem; height: 2rem; border-radius: 50%;
+  border: 1.5px solid var(--border); font-size: .68rem; font-weight: 700;
   cursor: pointer; color: var(--ink-dim); user-select: none;
   transition: background var(--dur-f) var(--ease), color var(--dur-f) var(--ease), border-color var(--dur-f) var(--ease);
 }
@@ -301,7 +322,7 @@ input[type=text]:focus, input[type=time]:focus {
 /* ── CSS toggle switch ── */
 .switch-row {
   display: flex; align-items: center; gap: .55rem;
-  margin-bottom: .6rem; flex-wrap: wrap; font-size: .88rem; font-weight: 500;
+  margin-bottom: .55rem; flex-wrap: wrap; font-size: .88rem; font-weight: 500;
 }
 .switch-wrap { position: relative; width: 2.5rem; height: 1.35rem; flex-shrink: 0; }
 .switch-wrap input {
@@ -324,21 +345,26 @@ input[type=text]:focus, input[type=time]:focus {
 .switch-wrap input:checked ~ .switch-thumb { transform: translateX(calc(2.5rem - 1.35rem)); }
 .switch-wrap input:focus-visible ~ .switch-track { outline: 2px solid var(--accent); outline-offset: 2px; }
 
+.hint { font-size: .75rem; color: var(--ink-dim); margin-bottom: .45rem; }
 
-.hint { font-size: .78rem; color: var(--ink-dim); margin-bottom: .45rem; }
+/* ── Range sliders ── */
+.slider-row { margin-bottom: .65rem; }
+.slider-row label.field { margin-bottom: .32rem; }
+.slider-inner { display: flex; align-items: center; gap: .6rem; }
+input[type=range] { flex: 1; accent-color: var(--accent); cursor: pointer; height: .25rem; padding: 0; }
+.slider-val { font-size: .82rem; color: var(--ink-dim); min-width: 3.8rem; text-align: right; flex-shrink: 0; }
 
 /* ── Buttons ── */
 button {
   display: inline-flex; align-items: center; gap: .3rem;
-  padding: .5rem .9rem; font-size: .88rem; font-weight: 600; font-family: var(--font-ui);
+  padding: .48rem .9rem; font-size: .86rem; font-weight: 600; font-family: var(--font-ui);
   border-radius: 10px; border: 1px solid var(--border);
   background: var(--surface); color: var(--ink); cursor: pointer; white-space: nowrap;
   transition: background var(--dur-f) var(--ease), transform var(--dur-f) var(--ease), box-shadow var(--dur-f) var(--ease);
 }
 @media (hover: hover) and (pointer: fine) {
-  button:not(.silence):not(.add-alarm-toggle):hover {
-    background: var(--surface-hi);
-    transform: translateY(-1px);
+  button:not(.silence):not(.fab):hover {
+    background: var(--surface-hi); transform: translateY(-1px);
     box-shadow: 0 4px 12px -4px rgba(0,0,0,.22);
   }
 }
@@ -348,94 +374,16 @@ button.primary { border-color: var(--accent); color: var(--accent); }
 button.primary:hover { background: var(--accent-dim); }
 button.danger { border-color: var(--danger); color: var(--danger); }
 button.danger:hover { background: var(--danger-dim); }
-button.icon { padding: .3rem .4rem; border: none; background: transparent; box-shadow: none; opacity: .45; }
+button.icon { padding: .28rem .38rem; border: none; background: transparent; box-shadow: none; opacity: .4; }
 button.icon:hover { opacity: 1; background: transparent; box-shadow: none; transform: none !important; }
-
-.panel-footer { display: flex; align-items: center; justify-content: space-between; gap: .45rem; margin-top: .7rem; }
-.footer-actions { display: flex; gap: .45rem; }
-
-/* ── Audio tabs ── */
-.tab-bar {
-  display: flex; gap: .2rem; margin-bottom: .75rem;
-  border-bottom: 1px solid var(--border); padding-bottom: .4rem;
-}
-.tab {
-  padding: .28rem .72rem; font-size: .82rem; font-weight: 600;
-  border: none; background: transparent; color: var(--ink-dim);
-  border-radius: 8px; cursor: pointer; font-family: var(--font-ui);
-  min-height: unset; box-shadow: none;
-  transition: background var(--dur-f) var(--ease), color var(--dur-f) var(--ease);
-}
-.tab[aria-selected="true"] { background: var(--accent-dim); color: var(--accent); }
-@media (hover: hover) and (pointer: fine) {
-  .tab:not([aria-selected="true"]):hover { background: var(--surface-hi); color: var(--ink); transform: none; box-shadow: none; }
-}
-.tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-
-/* ── Audio library ── */
-.audio-panel { padding: 1.15rem 1.25rem; }
-.audio-panel h2 { font-size: .95rem; font-weight: 700; margin-bottom: .9rem; }
-.audio-toolbar { margin-bottom: .55rem; }
-input[type=search] {
-  width: 100%; padding: .42rem .65rem; font-size: .88rem; font-family: var(--font-ui);
-  border: 1px solid var(--border); border-radius: 10px;
-  background: var(--surface); color: var(--ink);
-}
-input[type=search]:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); }
-
-ul.audio-list { list-style: none; }
-ul.audio-list li {
-  display: grid; grid-template-columns: auto 1fr auto;
-  align-items: center; gap: .4rem;
-  padding: .4rem 0; border-bottom: 1px solid var(--border);
-}
-ul.audio-list li:last-child { border-bottom: none; }
-ul.audio-list li[data-hidden] { display: none; }
-
-.fav-form { display: contents; }
-.fav-btn {
-  font-size: 1.05rem; padding: .2rem .3rem; border: none; background: transparent;
-  cursor: pointer; opacity: .3; color: var(--accent);
-  transition: opacity var(--dur-f) var(--ease); line-height: 1;
-}
-.fav-btn:hover { opacity: .8; }
-.fav-btn.is-fav { opacity: 1; }
-.fav-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-
-.filename-cell { display: flex; align-items: center; gap: .35rem; min-width: 0; overflow: hidden; }
-.filename { font-family: monospace; font-size: .87rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.rename-form { display: none; align-items: center; gap: .3rem; width: 100%; }
-.rename-form.active { display: flex; }
-.rename-input {
-  flex: 1; padding: .3rem .5rem; font-size: .85rem; font-family: monospace;
-  border: 1px solid var(--accent); border-radius: 8px;
-  background: var(--surface); color: var(--ink);
-}
-.rename-cancel { font-size: .8rem; padding: .25rem .45rem; }
-.ext-badge { font-size: .78rem; color: var(--ink-dim); font-family: monospace; white-space: nowrap; }
-.audio-actions { display: flex; gap: .25rem; align-items: center; }
-
-/* gradual row */
-.gradual-wrap { margin-bottom: .6rem; }
-.gradual-sub {
-  margin-top: .3rem; margin-left: calc(2.5rem + .55rem);
-  display: flex; align-items: center; gap: .5rem;
-  font-size: .85rem; color: var(--ink-dim);
-}
 
 /* ── Custom Select ── */
 .csel { position: relative; display: block; width: 100%; }
 .csel-sm { display: inline-flex; width: auto; }
-.csel-trigger {
-  width: 100%; text-align: left; gap: .45rem;
-  padding: .5rem .7rem; font-size: .92rem;
-}
-.csel-sm .csel-trigger { width: auto; font-size: .85rem; padding: .35rem .55rem; }
+.csel-trigger { width: 100%; text-align: left; gap: .45rem; padding: .48rem .7rem; font-size: .9rem; }
+.csel-sm .csel-trigger { width: auto; font-size: .84rem; padding: .32rem .55rem; }
 .csel-trigger:hover { transform: none !important; box-shadow: none !important; }
-.csel-trigger[aria-expanded="true"] {
-  border-color: var(--accent) !important;
-  box-shadow: 0 0 0 3px var(--accent-dim) !important;
-}
+.csel-trigger[aria-expanded="true"] { border-color: var(--accent) !important; box-shadow: 0 0 0 3px var(--accent-dim) !important; }
 .csel-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 400; }
 .csel-arrow { flex-shrink: 0; color: var(--ink-dim); line-height: 0; transition: transform var(--dur-f) var(--ease); }
 .csel-trigger[aria-expanded="true"] .csel-arrow { transform: rotate(180deg); }
@@ -443,35 +391,44 @@ ul.audio-list li[data-hidden] { display: none; }
 .csel-menu {
   position: absolute; top: calc(100% + 5px); left: 0; right: 0; z-index: 300;
   background: var(--surface-hi);
-  backdrop-filter: blur(24px) saturate(1.7);
-  -webkit-backdrop-filter: blur(24px) saturate(1.7);
+  backdrop-filter: blur(24px) saturate(1.7); -webkit-backdrop-filter: blur(24px) saturate(1.7);
   border: 1px solid var(--border); border-radius: 12px;
   padding: .3rem; list-style: none;
   box-shadow: 0 10px 32px -8px rgba(0,0,0,.55);
-  max-height: 15rem; overflow-y: auto;
+  max-height: 14rem; overflow-y: auto;
 }
 .csel-sm .csel-menu { width: max-content; min-width: 8rem; }
 .csel-opt {
-  padding: .4rem .65rem; border-radius: 8px;
-  font-size: .9rem; cursor: pointer; color: var(--ink);
-  user-select: none;
+  padding: .38rem .65rem; border-radius: 8px; font-size: .88rem;
+  cursor: pointer; color: var(--ink); user-select: none;
   transition: background var(--dur-f) var(--ease), color var(--dur-f) var(--ease);
 }
 .csel-opt:hover, .csel-opt:focus { background: var(--accent-dim); color: var(--accent); outline: none; }
 .csel-opt[aria-selected="true"] { background: var(--accent-dim); color: var(--accent); font-weight: 600; }
 
-/* ── File Upload ── */
-.file-upload-wrap { display: flex; flex-direction: column; gap: .5rem; }
-.file-upload-btn {
-  width: 100%; justify-content: center;
-  border-style: dashed; border-color: var(--border);
-  padding: .6rem; font-size: .88rem;
+/* ── Sound preview ── */
+.sound-preview { padding: 1rem 1.2rem; margin-top: .65rem; }
+.sound-preview .section-head { padding-bottom: .35rem; }
+.preview-top { display: flex; align-items: center; gap: .7rem; }
+.preview-play {
+  width: 2.2rem; height: 2.2rem; border-radius: 50%;
+  background: var(--accent); color: var(--accent-fg);
+  border: none; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; flex-shrink: 0; padding: 0;
+  box-shadow: 0 4px 12px -4px rgba(0,0,0,.35);
+  transition: filter var(--dur-f), transform var(--dur-f) var(--ease);
 }
-.file-upload-btn:hover { border-color: var(--accent) !important; color: var(--accent); }
-.file-name-display {
-  font-size: .82rem; color: var(--ink-dim);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
+.preview-play:hover { filter: brightness(1.12); transform: scale(1.08) !important; }
+.preview-play:active { transform: scale(.94) !important; }
+.preview-info { flex: 1; min-width: 0; }
+.preview-title { font-weight: 600; font-size: .88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.preview-scrubber { width: 100%; margin-top: .65rem; accent-color: var(--accent); cursor: pointer; }
+
+/* ── Smart Insights card ── */
+.insight-card { display: flex; align-items: flex-start; gap: .6rem; padding: .9rem 1.1rem; margin-top: .65rem; }
+.insight-icon { font-size: 1.1rem; flex-shrink: 0; margin-top: .05rem; }
+.insight-label { font-size: .67rem; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: var(--ink-dim); margin-bottom: .22rem; }
+.insight-text { font-size: .84rem; line-height: 1.45; }
 
 /* ── Toast ── */
 #toast {
@@ -479,34 +436,49 @@ ul.audio-list li[data-hidden] { display: none; }
   transform: translateX(-50%) translateY(130%);
   background: var(--surface); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--border); color: var(--ink);
-  padding: .55rem 1.1rem; border-radius: 10px;
-  font-size: .88rem; white-space: nowrap;
+  padding: .5rem 1.1rem; border-radius: 10px;
+  font-size: .86rem; white-space: nowrap;
   box-shadow: 0 8px 24px -8px rgba(0,0,0,.4);
   transition: transform var(--dur-m) var(--ease), opacity var(--dur-m) var(--ease);
   opacity: 0; pointer-events: none; z-index: 999;
 }
 #toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+/* ── Responsive collapse ── */
+@media (max-width: 900px) {
+  body { overflow: auto; height: auto; }
+  .page { height: auto; }
+  .dashboard-grid { grid-template-columns: 1fr; padding-bottom: 1rem; }
+  .sidebar { overflow: visible; height: auto; }
+  .col-scroll, .detail-scroll { overflow: visible; height: auto; flex: none; padding-bottom: 0; }
+  .alarms-col, .detail-col { min-height: 0; }
+  .detail-empty { min-height: 6rem; }
+}
 </style>
 </head>
 <body>
-<div class="page">
 
-  <header class="hero">
-    <div class="hero-clock" id="hero-time">{{ '%02d:%02d' | format(current_hour, current_minute) }}</div>
-    <div class="hero-meta">
-      <span class="hero-date" id="hero-date">{{ weekday_name }}, {{ date_str }}</span>
-      {% if active %}
-        <span class="hero-pill ringing">● Ringing</span>
-      {% else %}
-        <span class="hero-pill">{{ alarms|length }} alarm{{ 's' if alarms|length != 1 else '' }}</span>
-      {% endif %}
-    </div>
-  </header>
+{# ── Pre-group alarms ── #}
+{% set ns = namespace(today_alarms=[], upcoming_alarms=[], disabled_alarms=[]) %}
+{% for a in alarms %}
+  {% if not a.enabled %}
+    {% set ns.disabled_alarms = ns.disabled_alarms + [a] %}
+  {% elif not a.days or today_weekday in a.days %}
+    {% set ns.today_alarms = ns.today_alarms + [a] %}
+  {% else %}
+    {% set ns.upcoming_alarms = ns.upcoming_alarms + [a] %}
+  {% endif %}
+{% endfor %}
+{% set day_abbr  = ['M','T','W','T','F','S','S'] %}
+{% set day_names = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'] %}
+{% set lib_names = audio_files | map(attribute='name') | list %}
+
+<div class="page">
 
   {% if active %}
   <div class="banner glass" aria-live="assertive" role="alert">
     <div class="led-ring" aria-hidden="true">
-      <svg viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <svg viewBox="0 0 44 44" fill="none">
         <circle class="led-outer" cx="22" cy="22" r="20" stroke="#c44" stroke-width="2" opacity=".6"/>
         <circle cx="22" cy="22" r="12" stroke="#c44" stroke-width="2" opacity=".4"/>
         <circle cx="22" cy="22" r="5" fill="#c44"/>
@@ -521,249 +493,336 @@ ul.audio-list li[data-hidden] { display: none; }
   </div>
   {% endif %}
 
-  <div class="layout">
+  <div class="dashboard-grid">
 
-    <!-- Left: alarms -->
-    <div>
-      <p class="section-head">Alarms</p>
+    <!-- ═══════════════════════════════ Column A: Sidebar ════ -->
+    <aside class="sidebar">
 
-      <!-- Add alarm collapsible -->
-      <div class="glass add-alarm-card">
-        <button type="button" class="add-alarm-toggle" id="add-alarm-btn"
-                onclick="toggleAddAlarm()" aria-expanded="false">
-          <span class="add-icon" aria-hidden="true">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-            </svg>
-          </span>
-          New Alarm
-        </button>
-        <div id="add-alarm-form" hidden>
-          <div class="add-form-body">
-            <form method="post" action="{{ url_for('create_alarm') }}">
-              <div class="field-row" style="margin-bottom:.6rem;">
-                <label class="field">Time
-                  <input type="time" name="time" required>
-                </label>
-                <label class="field">Label
-                  <input type="text" name="label" placeholder="Wake up">
+      <div class="glass clock-card">
+        <div class="hero-clock" id="hero-time">{{ '%02d:%02d' | format(current_hour, current_minute) }}</div>
+        <div class="hero-date" id="hero-date">{{ weekday_name }}, {{ date_str }}</div>
+        {% if active %}
+          <span class="hero-pill ringing">● Ringing</span>
+        {% else %}
+          <span class="hero-pill">{{ alarms|length }} alarm{{ 's' if alarms|length != 1 else '' }}</span>
+        {% endif %}
+      </div>
+
+      <div class="glass next-alarm-card">
+        <p class="section-head">Next Alarm</p>
+        <div class="next-alarm-name" id="next-alarm-name">—</div>
+        <div class="next-alarm-time" id="next-alarm-time">—</div>
+        <div class="next-alarm-countdown" id="next-alarm-countdown">No alarms scheduled</div>
+        <div class="next-alarm-pips" id="next-alarm-pips"></div>
+      </div>
+
+      <!-- Today Overview — placeholder values -->
+      <div class="glass today-overview-card">
+        <p class="section-head">Today's Overview</p>
+        <div class="overview-row">
+          <span class="overview-icon">🌅</span>
+          <span class="overview-label">Sunrise</span>
+          <span class="overview-value">06:08</span>
+        </div>
+        <div class="overview-row">
+          <span class="overview-icon">🌇</span>
+          <span class="overview-label">Sunset</span>
+          <span class="overview-value">20:31</span>
+        </div>
+        <div class="overview-row">
+          <span class="overview-icon">🛌</span>
+          <span class="overview-label">Sleep Window</span>
+          <span class="overview-value">22:00–07:45</span>
+        </div>
+        <div class="overview-row">
+          <span class="overview-icon">⏱</span>
+          <span class="overview-label">Duration</span>
+          <span class="overview-value">8h 3m</span>
+        </div>
+      </div>
+
+      <button class="fab" type="button" onclick="openDetailPaneForNew()" aria-label="New alarm" title="New alarm">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+      </button>
+
+      <a class="settings-link" href="?view=mobile">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+        Mobile view
+      </a>
+
+    </aside>
+
+    <!-- ═══════════════════════════ Column B: Alarms feed ════ -->
+    <main class="alarms-col">
+      <div class="col-scroll">
+
+        {# Today section #}
+        {% if ns.today_alarms %}
+        <div class="feed-group">
+          <p class="section-head">Today</p>
+          <ul style="list-style:none;">
+            {% for a in ns.today_alarms %}
+            <li id="card-{{ a.id }}"
+                class="glass alarm-card {{ '' if a.enabled else 'alarm-disabled' }}"
+                style="--i:{{ loop.index0 }}"
+                onclick="selectAlarm('{{ a.id }}')"
+                tabindex="0"
+                onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectAlarm('{{ a.id }}');}">
+              <div class="alarm-card-body">
+                <div class="alarm-card-time">{{ a.time }}</div>
+                <div class="alarm-card-meta">
+                  <span>{{ a.label or '(no label)' }}</span>
+                  {% if a.audio_file in lib_names %}
+                    <span class="meta-sep">·</span>
+                    <span>{{ a.audio_file }}</span>
+                  {% endif %}
+                </div>
+                <div class="days-display">
+                  {% for di in range(7) %}
+                    <span class="day-pip {{ 'active' if di in a.days else '' }}" title="{{ day_names[di] }}">{{ day_abbr[di] }}</span>
+                  {% endfor %}
+                </div>
+              </div>
+              <div class="alarm-card-right" onclick="event.stopPropagation()">
+                <label class="switch-wrap" title="{{ 'Disable' if a.enabled else 'Enable' }}">
+                  <input type="checkbox" {{ 'checked' if a.enabled }}
+                         onchange="toggleAlarmEnabled('{{ a.id }}', event)">
+                  <span class="switch-track"></span>
+                  <span class="switch-thumb"></span>
                 </label>
               </div>
-              <label class="field">Audio
-                <select name="audio_file">
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% endif %}
+
+        {# Upcoming section #}
+        {% if ns.upcoming_alarms %}
+        <div class="feed-group">
+          <p class="section-head">Upcoming</p>
+          <ul style="list-style:none;">
+            {% for a in ns.upcoming_alarms %}
+            <li id="card-{{ a.id }}"
+                class="glass alarm-card {{ '' if a.enabled else 'alarm-disabled' }}"
+                style="--i:{{ (ns.today_alarms|length) + loop.index0 }}"
+                onclick="selectAlarm('{{ a.id }}')"
+                tabindex="0"
+                onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectAlarm('{{ a.id }}');}">
+              <div class="alarm-card-body">
+                <div class="alarm-card-time">{{ a.time }}</div>
+                <div class="alarm-card-meta">
+                  <span>{{ a.label or '(no label)' }}</span>
+                  {% if a.audio_file in lib_names %}
+                    <span class="meta-sep">·</span>
+                    <span>{{ a.audio_file }}</span>
+                  {% endif %}
+                </div>
+                <div class="days-display">
+                  {% for di in range(7) %}
+                    <span class="day-pip {{ 'active' if di in a.days else '' }}" title="{{ day_names[di] }}">{{ day_abbr[di] }}</span>
+                  {% endfor %}
+                </div>
+              </div>
+              <div class="alarm-card-right" onclick="event.stopPropagation()">
+                <label class="switch-wrap" title="{{ 'Disable' if a.enabled else 'Enable' }}">
+                  <input type="checkbox" {{ 'checked' if a.enabled }}
+                         onchange="toggleAlarmEnabled('{{ a.id }}', event)">
+                  <span class="switch-track"></span>
+                  <span class="switch-thumb"></span>
+                </label>
+              </div>
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% endif %}
+
+        {# Disabled section (collapsed by default) #}
+        {% if ns.disabled_alarms %}
+        <div class="feed-group">
+          <div class="show-disabled-row" id="disabled-toggle-row"
+               onclick="toggleDisabledSection()" role="button" tabindex="0"
+               onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleDisabledSection();}">
+            <svg id="disabled-caret" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="transition:transform var(--dur-f) var(--ease);flex-shrink:0;">
+              <polyline points="9 18 15 12 9 6"/>
+            </svg>
+            Show disabled alarms ({{ ns.disabled_alarms|length }})
+          </div>
+          <ul id="disabled-list" style="list-style:none;" hidden>
+            {% for a in ns.disabled_alarms %}
+            <li id="card-{{ a.id }}"
+                class="glass alarm-card alarm-disabled"
+                style="--i:{{ (ns.today_alarms|length) + (ns.upcoming_alarms|length) + loop.index0 }}"
+                onclick="selectAlarm('{{ a.id }}')"
+                tabindex="0"
+                onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectAlarm('{{ a.id }}');}">
+              <div class="alarm-card-body">
+                <div class="alarm-card-time">{{ a.time }}</div>
+                <div class="alarm-card-meta">
+                  <span>{{ a.label or '(no label)' }}</span>
+                  {% if a.audio_file in lib_names %}
+                    <span class="meta-sep">·</span>
+                    <span>{{ a.audio_file }}</span>
+                  {% endif %}
+                </div>
+                <div class="days-display">
+                  {% for di in range(7) %}
+                    <span class="day-pip {{ 'active' if di in a.days else '' }}" title="{{ day_names[di] }}">{{ day_abbr[di] }}</span>
+                  {% endfor %}
+                </div>
+              </div>
+              <div class="alarm-card-right" onclick="event.stopPropagation()">
+                <label class="switch-wrap" title="Enable">
+                  <input type="checkbox"
+                         onchange="toggleAlarmEnabled('{{ a.id }}', event)">
+                  <span class="switch-track"></span>
+                  <span class="switch-thumb"></span>
+                </label>
+              </div>
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% endif %}
+
+        {% if not alarms %}
+          <p style="opacity:.4; padding:.5rem .2rem; font-size:.88rem;">No alarms yet — tap + to add one.</p>
+        {% endif %}
+
+      </div>
+    </main>
+
+    <!-- ══════════════════════════ Column C: Detail pane ════ -->
+    <aside class="detail-col">
+      <div class="detail-scroll">
+
+        <div class="detail-empty" id="detail-empty">
+          <p style="opacity:.35; font-size:.88rem; text-align:center; line-height:1.6;">Select an alarm to<br>view details</p>
+        </div>
+
+        <div id="detail-content" hidden>
+
+          <p class="section-head" id="detail-title">Alarm Details</p>
+
+          <!-- Main edit form -->
+          <div class="glass detail-pane">
+            <form id="detail-form" method="post" action="">
+
+              <div class="field-row" style="margin-bottom:.65rem;">
+                <label class="field">Time
+                  <input type="time" name="time" id="d-time" required>
+                </label>
+                <label class="field">Label
+                  <input type="text" name="label" id="d-label" placeholder="Wake up">
+                </label>
+              </div>
+
+              <div class="hint">Repeat — leave all off for every day</div>
+              <div class="day-dots">
+                {% for di in range(7) %}
+                  <label class="day-dot" title="{{ day_names[di] }}">
+                    <input type="checkbox" name="days" value="{{ di }}" id="d-day-{{ di }}">
+                    <span>{{ day_abbr[di] }}</span>
+                  </label>
+                {% endfor %}
+              </div>
+
+              <label class="field">Sound
+                <select name="audio_file" id="d-audio">
                   <option value="">— Default tone —</option>
                   {% for f in audio_files %}
                     <option value="{{ f.name }}">{{ '★ ' if f.favorite else '' }}{{ f.name }}</option>
                   {% endfor %}
                 </select>
               </label>
-              <div class="hint">Repeat — leave all off for every day</div>
-              <div class="day-dots">
-                {% set day_abbr = ['M','T','W','T','F','S','S'] %}
-                {% for i in range(7) %}
-                  <label class="day-dot" title="{{ ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][i] }}">
-                    <input type="checkbox" name="days" value="{{ i }}">
-                    <span>{{ day_abbr[i] }}</span>
-                  </label>
-                {% endfor %}
-              </div>
-              <div class="gradual-wrap">
-                <label class="switch-row" style="margin-bottom:0;">
-                  <span class="switch-wrap">
-                    <input type="checkbox" name="gradual" value="1" id="gradual-check"
-                           onchange="var sub=this.closest('.gradual-wrap').querySelector('.gradual-sub');sub.hidden=!this.checked;sub.querySelector('select').disabled=!this.checked;">
-                    <span class="switch-track"></span>
-                    <span class="switch-thumb"></span>
-                  </span>
-                  Gradually increase volume
-                </label>
-                <div class="gradual-sub" hidden>
-                  <span>over</span>
-                  <select name="gradual_minutes" id="gradual-dur" disabled class="gradual-dur">
-                    <option value="2">2 min</option>
-                    <option value="5">5 min</option>
-                    <option value="10" selected>10 min</option>
-                    <option value="20">20 min</option>
-                  </select>
+
+              <div class="slider-row">
+                <label class="field">Volume</label>
+                <div class="slider-inner">
+                  <input type="range" name="volume" id="d-volume" min="0" max="100" value="80"
+                         oninput="document.getElementById('d-volume-val').textContent=this.value">
+                  <span class="slider-val" id="d-volume-val">80</span>
                 </div>
               </div>
-              <button class="primary" type="submit" style="margin-top:.25rem;">Add Alarm</button>
+
+              <div class="slider-row">
+                <label class="field">Fade in</label>
+                <div class="slider-inner">
+                  <input type="range" name="fade_in_seconds" id="d-fadein" min="0" max="300" value="0" step="5"
+                         oninput="document.getElementById('d-fadein-val').textContent=this.value+' sec'">
+                  <span class="slider-val" id="d-fadein-val">0 sec</span>
+                </div>
+              </div>
+
+              <label class="field">Snooze
+                <select name="snooze_minutes" id="d-snooze">
+                  <option value="0">Off</option>
+                  <option value="5">5 min</option>
+                  <option value="9" selected>9 min</option>
+                  <option value="15">15 min</option>
+                  <option value="30">30 min</option>
+                </select>
+              </label>
+
+              <label class="switch-row" style="margin-bottom:.85rem;">
+                <span class="switch-wrap">
+                  <input type="checkbox" name="enabled" value="1" id="d-enabled" checked>
+                  <span class="switch-track"></span>
+                  <span class="switch-thumb"></span>
+                </span>
+                Alarm is on
+              </label>
+
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:.4rem;">
+                <button class="primary" type="submit">Save</button>
+                <!-- Delete button submits the separate delete form via form= attribute -->
+                <button class="danger" type="submit" form="detail-delete-form" id="detail-delete-btn">Delete Alarm</button>
+              </div>
+
             </form>
           </div>
-        </div>
-      </div>
 
-      <!-- Alarm list -->
-      {% if not alarms %}
-        <p style="opacity:.45; padding:.6rem .25rem; font-size:.9rem;">No alarms yet.</p>
-      {% endif %}
-      <ul class="alarms" id="alarms-list">
-        {% set day_abbr = ['M','T','W','T','F','S','S'] %}
-        {% set day_names = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'] %}
-        {% set lib_names = audio_files | map(attribute='name') | list %}
-        {% for a in alarms %}
-          <li id="ali-{{ a.id }}" style="--i: {{ loop.index0 }}"
-              class="glass alarm-item {{ '' if a.enabled else 'alarm-disabled' }}">
-            <div class="alarm-summary"
-                 onclick="toggleAlarmPanel('{{ a.id }}')"
-                 id="sum-{{ a.id }}" aria-expanded="false" role="button" tabindex="0"
-                 onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleAlarmPanel('{{ a.id }}');}">
-              <span class="alarm-time">{{ a.time }}</span>
-              <div class="alarm-info">
-                <div class="alarm-lbl">
-                  {{ a.label or '(no label)' }}
-                  {% if not a.enabled %}<span class="paused-pill">Paused</span>{% endif %}
-                </div>
-                <div class="days-display">
-                  {% for i in range(7) %}
-                    <span class="day-pip {{ 'active' if i in a.days else '' }}"
-                          title="{{ day_names[i] }}">{{ day_abbr[i] }}</span>
-                  {% endfor %}
-                </div>
-              </div>
-              <span class="alarm-caret" id="caret-{{ a.id }}" aria-hidden="true">›</span>
-            </div>
-            <div class="alarm-panel" id="ap-{{ a.id }}" hidden>
-              <form id="edit-{{ a.id }}" method="post" action="{{ url_for('edit_alarm', alarm_id=a.id) }}">
-                <div class="field-row" style="margin-bottom:.6rem;">
-                  <label class="field">Time
-                    <input type="time" name="time" value="{{ a.time }}" required>
-                  </label>
-                  <label class="field">Label
-                    <input type="text" name="label" value="{{ a.label or '' }}" placeholder="Wake up">
-                  </label>
-                </div>
-                <div class="hint">Repeat — leave all off for every day</div>
-                <div class="day-dots">
-                  {% for i in range(7) %}
-                    <label class="day-dot" title="{{ day_names[i] }}">
-                      <input type="checkbox" name="days" value="{{ i }}" {% if i in a.days %}checked{% endif %}>
-                      <span>{{ day_abbr[i] }}</span>
-                    </label>
-                  {% endfor %}
-                </div>
-                <label class="field">Audio
-                  <select name="audio_file">
-                    <option value="" {% if a.audio_file not in lib_names %}selected{% endif %}>— Default tone —</option>
-                    {% for f in audio_files %}
-                      <option value="{{ f.name }}" {% if f.name == a.audio_file %}selected{% endif %}>{{ '★ ' if f.favorite else '' }}{{ f.name }}</option>
-                    {% endfor %}
-                  </select>
-                </label>
-                <div class="gradual-wrap">
-                  <label class="switch-row" style="margin-bottom:0;">
-                    <span class="switch-wrap">
-                      <input type="checkbox" name="gradual" value="1" id="grad-{{ a.id }}"
-                             {% if a.gradual %}checked{% endif %}
-                             onchange="var sub=this.closest('.gradual-wrap').querySelector('.gradual-sub');sub.hidden=!this.checked;sub.querySelector('select').disabled=!this.checked;">
-                      <span class="switch-track"></span>
-                      <span class="switch-thumb"></span>
-                    </span>
-                    Gradually increase volume
-                  </label>
-                  <div class="gradual-sub" {% if not a.gradual %}hidden{% endif %}>
-                    <span>over</span>
-                    <select name="gradual_minutes" id="graddur-{{ a.id }}"
-                            {% if not a.gradual %}disabled{% endif %} class="gradual-dur">
-                      <option value="2"  {% if a.gradual_minutes == 2  %}selected{% endif %}>2 min</option>
-                      <option value="5"  {% if a.gradual_minutes == 5  %}selected{% endif %}>5 min</option>
-                      <option value="10" {% if a.gradual_minutes not in [2,5,20] or a.gradual_minutes == 10 %}selected{% endif %}>10 min</option>
-                      <option value="20" {% if a.gradual_minutes == 20 %}selected{% endif %}>20 min</option>
-                    </select>
-                  </div>
-                </div>
-                <label class="switch-row">
-                  <span class="switch-wrap">
-                    <input type="checkbox" name="enabled" value="1" id="en-{{ a.id }}" {% if a.enabled %}checked{% endif %}>
-                    <span class="switch-track"></span>
-                    <span class="switch-thumb"></span>
-                  </span>
-                  Alarm enabled
-                </label>
-              </form>
-              <form id="del-{{ a.id }}" method="post" action="{{ url_for('delete_alarm', alarm_id=a.id) }}"></form>
-              <div class="panel-footer">
-                <div class="footer-actions">
-                  <button class="primary" type="submit" form="edit-{{ a.id }}">Save</button>
-                  <button type="button" onclick="closeAlarmPanel('{{ a.id }}')">Cancel</button>
-                </div>
-                <button class="danger" type="submit" form="del-{{ a.id }}">Delete</button>
+          <!-- Delete form — separate from the edit form to avoid nesting -->
+          <form id="detail-delete-form" method="post" action="" hidden></form>
+
+          <!-- Sound preview -->
+          <div class="glass sound-preview" id="sound-preview" hidden>
+            <p class="section-head">Sound Preview</p>
+            <audio id="preview-audio" preload="metadata"></audio>
+            <div class="preview-top">
+              <button type="button" class="preview-play" id="preview-play" aria-label="Play/Pause"></button>
+              <div class="preview-info">
+                <div class="preview-title" id="preview-title"></div>
               </div>
             </div>
-          </li>
-        {% endfor %}
-      </ul>
-    </div>
-
-    <!-- Right: audio library -->
-    <div>
-      <p class="section-head">Audio Library</p>
-      <div class="glass audio-panel">
-        <div class="tab-bar" role="tablist">
-          <button type="button" role="tab" class="tab" aria-selected="true"
-                  onclick="switchAudioTab(this,'audio-tab-library')">Library</button>
-          <button type="button" role="tab" class="tab" aria-selected="false"
-                  onclick="switchAudioTab(this,'audio-tab-upload')">Upload</button>
-        </div>
-
-        <div id="audio-tab-library" class="tab-panel">
-          {% if audio_files %}
-          <div class="audio-toolbar">
-            <input type="search" id="audio-search" placeholder="Search files…" oninput="filterAudio(this.value)">
+            <input type="range" class="preview-scrubber" id="preview-scrubber" min="0" max="100" value="0" step=".1">
           </div>
-          {% endif %}
-          <ul class="audio-list" id="audio-list">
-            {% for f in audio_files %}
-              <li data-name="{{ f.name }}">
-                <form class="fav-form" method="post" action="{{ url_for('favorite_audio', filename=f.name) }}">
-                  <button type="submit" class="fav-btn {{ 'is-fav' if f.favorite else '' }}"
-                          title="{{ 'Unfavorite' if f.favorite else 'Favorite' }}">★</button>
-                </form>
-                <div class="filename-cell">
-                  <span class="filename" id="fn-{{ loop.index }}">{{ f.name }}</span>
-                  <button type="button" class="icon" title="Rename"
-                          onclick="startRename({{ loop.index }}, '{{ f.stem }}')">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none"
-                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                      <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
-                    </svg>
-                  </button>
-                  <form class="rename-form" id="rf-{{ loop.index }}" method="post"
-                        action="{{ url_for('rename_audio', filename=f.name) }}">
-                    <input class="rename-input" type="text" name="new_name" id="ri-{{ loop.index }}" required>
-                    <span class="ext-badge">{{ f.ext }}</span>
-                    <button class="primary" type="submit" style="padding:.3rem .6rem;font-size:.82rem;">OK</button>
-                    <button type="button" class="rename-cancel" onclick="cancelRename({{ loop.index }})">✕</button>
-                  </form>
-                </div>
-                <div class="audio-actions">
-                  <form method="post" action="{{ url_for('delete_audio', filename=f.name) }}">
-                    <button type="submit" class="danger" style="padding:.3rem .6rem;font-size:.82rem;">Delete</button>
-                  </form>
-                </div>
-              </li>
-            {% else %}
-              <li style="opacity:.45; grid-column:1/-1; font-size:.88rem; padding:.4rem 0;">No uploaded audio files yet.</li>
-            {% endfor %}
-          </ul>
-        </div>
 
-        <div id="audio-tab-upload" class="tab-panel" hidden>
-          <form method="post" action="{{ url_for('upload_audio') }}" enctype="multipart/form-data">
-            <label class="field">File
-              <input type="file" name="audio" accept=".wav,.mp3" required>
-            </label>
-            <button class="primary" type="submit">Upload</button>
-          </form>
-        </div>
+          <!-- Smart Insights -->
+          <div class="glass insight-card">
+            <span class="insight-icon">💡</span>
+            <div>
+              <div class="insight-label">Smart Insights</div>
+              <p class="insight-text">You usually wake up between 07:45 – 08:15</p>
+            </div>
+          </div>
+
+        </div><!-- #detail-content -->
       </div>
-    </div>
+    </aside>
 
-  </div><!-- .layout -->
-
+  </div><!-- .dashboard-grid -->
 </div><!-- .page -->
 
 <div id="toast" aria-live="polite"></div>
+
+<script type="application/json" id="alarms-data">{{ alarms | tojson }}</script>
 
 <script>
 // ── Toast ──
@@ -776,124 +835,284 @@ function showToast(msg) {
   _toastTimer = setTimeout(() => t.classList.remove('show'), 3500);
 }
 
-// ── Audio search ──
-function filterAudio(q) {
-  q = q.toLowerCase().trim();
-  document.querySelectorAll('#audio-list li[data-name]').forEach(li => {
-    li.toggleAttribute('data-hidden', !(!q || li.dataset.name.toLowerCase().includes(q)));
-  });
-}
+// ── State ──
+const state = { selectedAlarmId: null };
 
-// ── Rename ──
-function startRename(idx, stem) {
-  document.getElementById('fn-' + idx).style.display = 'none';
-  const rf = document.getElementById('rf-' + idx);
-  rf.classList.add('active');
-  const ri = document.getElementById('ri-' + idx);
-  ri.value = stem;
-  ri.focus();
-  ri.select();
+function getAlarmsData() {
+  return JSON.parse(document.getElementById('alarms-data').textContent);
 }
-function cancelRename(idx) {
-  document.getElementById('fn-' + idx).style.display = '';
-  document.getElementById('rf-' + idx).classList.remove('active');
-}
-document.querySelectorAll('.rename-form').forEach(form => {
-  form.addEventListener('submit', async e => {
-    e.preventDefault();
-    const idx = form.id.replace('rf-', '');
-    const resp = await fetch(form.action, { method: 'POST', body: new FormData(form) });
-    if (resp.ok) {
-      location.reload();
-    } else {
-      const data = await resp.json().catch(() => ({}));
-      showToast(data.error || 'Rename failed');
-      cancelRename(idx);
-    }
-  });
-});
-document.addEventListener('keydown', e => {
-  if (e.key !== 'Escape') return;
-  document.querySelectorAll('.rename-form.active').forEach(form => {
-    cancelRename(form.id.replace('rf-', ''));
-  });
-});
+function isAutoTone(f) { return /^[0-9a-f]{8}\.wav$/.test(f); }
 
-// ── Audio library tabs ──
-function switchAudioTab(btn, panelId) {
-  const panel = btn.closest('.audio-panel');
-  panel.querySelectorAll('.tab-panel').forEach(p => p.hidden = true);
-  panel.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', 'false'));
-  document.getElementById(panelId).hidden = false;
-  btn.setAttribute('aria-selected', 'true');
-}
-
-// ── Add-alarm toggle ──
-function toggleAddAlarm() {
-  const form = document.getElementById('add-alarm-form');
-  const btn  = document.getElementById('add-alarm-btn');
-  const open = !form.hidden;
-  form.hidden = open;
-  btn.setAttribute('aria-expanded', String(!open));
-}
-
-// ── Alarm panels ──
-function toggleAlarmPanel(id) {
-  const panel = document.getElementById('ap-' + id);
-  const caret = document.getElementById('caret-' + id);
-  const sum   = document.getElementById('sum-' + id);
-  const isOpen = !panel.hidden;
-  document.querySelectorAll('.alarm-panel').forEach(p => { p.hidden = true; });
-  document.querySelectorAll('.alarm-caret').forEach(c => { c.classList.remove('open'); });
-  document.querySelectorAll('[id^="sum-"]').forEach(s => { s.setAttribute('aria-expanded', 'false'); });
-  if (!isOpen) {
-    panel.hidden = false;
-    caret.classList.add('open');
-    sum.setAttribute('aria-expanded', 'true');
+// Update a custom-select widget's display when sel.value changes externally.
+function syncCustomSelect(sel) {
+  const wrapper = sel.previousElementSibling;
+  if (!wrapper || !wrapper.classList.contains('csel')) return;
+  const lbl  = wrapper.querySelector('.csel-label');
+  const opts = [...wrapper.querySelectorAll('.csel-opt')];
+  opts.forEach(o => o.removeAttribute('aria-selected'));
+  const hit = opts.find(o => o.dataset.value === sel.value);
+  if (hit) {
+    hit.setAttribute('aria-selected', 'true');
+    if (lbl) lbl.textContent = hit.textContent;
+  } else if (opts[0]) {
+    sel.value = opts[0].dataset.value;
+    opts[0].setAttribute('aria-selected', 'true');
+    if (lbl) lbl.textContent = opts[0].textContent;
   }
 }
-function closeAlarmPanel(id) {
-  document.getElementById('ap-' + id).hidden = true;
-  document.getElementById('caret-' + id).classList.remove('open');
-  const sum = document.getElementById('sum-' + id);
-  if (sum) sum.setAttribute('aria-expanded', 'false');
+
+// ── Select alarm for editing ──
+function selectAlarm(id) {
+  const alarm = getAlarmsData().find(a => a.id === id);
+  if (!alarm) return;
+
+  state.selectedAlarmId = id;
+
+  document.querySelectorAll('.alarm-card').forEach(c => c.classList.remove('selected'));
+  const card = document.getElementById('card-' + id);
+  if (card) card.classList.add('selected');
+
+  document.getElementById('detail-empty').hidden   = true;
+  document.getElementById('detail-content').hidden = false;
+  document.getElementById('detail-title').textContent = 'Alarm Details';
+
+  document.getElementById('detail-form').action        = '/alarms/' + id + '/edit';
+  document.getElementById('detail-delete-form').action = '/alarms/' + id + '/delete';
+  document.getElementById('detail-delete-form').hidden = false;
+  document.getElementById('detail-delete-btn').style.display = '';
+
+  document.getElementById('d-time').value  = alarm.time;
+  document.getElementById('d-label').value = alarm.label || '';
+
+  for (let i = 0; i < 7; i++) {
+    const cb = document.getElementById('d-day-' + i);
+    if (cb) cb.checked = (alarm.days || []).includes(i);
+  }
+
+  const audioSel = document.getElementById('d-audio');
+  const isLib    = alarm.audio_file && !isAutoTone(alarm.audio_file);
+  audioSel.value = isLib ? alarm.audio_file : '';
+  syncCustomSelect(audioSel);
+
+  const vol = alarm.volume ?? 80;
+  document.getElementById('d-volume').value           = vol;
+  document.getElementById('d-volume-val').textContent = String(vol);
+
+  const fade = alarm.fade_in_seconds ?? 0;
+  document.getElementById('d-fadein').value           = fade;
+  document.getElementById('d-fadein-val').textContent = fade + ' sec';
+
+  const snoozeSel = document.getElementById('d-snooze');
+  snoozeSel.value = String(alarm.snooze_minutes ?? 9);
+  syncCustomSelect(snoozeSel);
+
+  document.getElementById('d-enabled').checked = alarm.enabled !== false;
+
+  updateSoundPreview(isLib ? alarm.audio_file : null);
 }
+
+// ── New alarm mode ──
+function openDetailPaneForNew() {
+  state.selectedAlarmId = null;
+
+  document.querySelectorAll('.alarm-card').forEach(c => c.classList.remove('selected'));
+  document.getElementById('detail-empty').hidden   = true;
+  document.getElementById('detail-content').hidden = false;
+  document.getElementById('detail-title').textContent = 'New Alarm';
+
+  document.getElementById('detail-form').action = '/alarms';
+  document.getElementById('detail-delete-form').hidden = true;
+  document.getElementById('detail-delete-btn').style.display = 'none';
+
+  const now = new Date();
+  document.getElementById('d-time').value  = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+  document.getElementById('d-label').value = '';
+  for (let i = 0; i < 7; i++) { const cb = document.getElementById('d-day-' + i); if (cb) cb.checked = false; }
+
+  const audioSel = document.getElementById('d-audio');
+  audioSel.value = '';
+  syncCustomSelect(audioSel);
+
+  document.getElementById('d-volume').value           = 80;
+  document.getElementById('d-volume-val').textContent = '80';
+  document.getElementById('d-fadein').value           = 0;
+  document.getElementById('d-fadein-val').textContent = '0 sec';
+
+  const snoozeSel = document.getElementById('d-snooze');
+  snoozeSel.value = '9';
+  syncCustomSelect(snoozeSel);
+
+  document.getElementById('d-enabled').checked = true;
+  updateSoundPreview(null);
+}
+
+// ── Card toggle (does not select the alarm) ──
+function toggleAlarmEnabled(id, event) {
+  event.stopPropagation();
+  const card = document.getElementById('card-' + id);
+  if (card) card.classList.toggle('alarm-disabled');
+  fetch('/alarms/' + id + '/toggle', { method: 'POST' })
+    .then(() => location.reload())
+    .catch(() => location.reload());
+}
+
+// ── Disabled section expand/collapse ──
+function toggleDisabledSection() {
+  const list  = document.getElementById('disabled-list');
+  const caret = document.getElementById('disabled-caret');
+  if (!list) return;
+  const open = !list.hidden;
+  list.hidden = open;
+  if (caret) caret.style.transform = open ? '' : 'rotate(90deg)';
+}
+
+// ── Sound preview ──
+const previewAudio    = document.getElementById('preview-audio');
+const previewPlay     = document.getElementById('preview-play');
+const previewScrubber = document.getElementById('preview-scrubber');
+
+function setPlayIcon(playing) {
+  if (!previewPlay) return;
+  previewPlay.innerHTML = playing
+    ? '<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>'
+    : '<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="5,3 19,12 5,21"/></svg>';
+}
+setPlayIcon(false);
+
+function updateSoundPreview(filename) {
+  const wrapper = document.getElementById('sound-preview');
+  if (!filename) {
+    wrapper.hidden = true;
+    if (previewAudio) { previewAudio.pause(); previewAudio.src = ''; }
+    setPlayIcon(false);
+    return;
+  }
+  wrapper.hidden = false;
+  const titleEl = document.getElementById('preview-title');
+  if (titleEl) titleEl.textContent = filename;
+  if (previewAudio) {
+    previewAudio.pause();
+    previewAudio.src = '/audio/' + encodeURIComponent(filename);
+    previewAudio.load();
+    if (previewScrubber) previewScrubber.value = 0;
+    setPlayIcon(false);
+  }
+}
+
+if (previewPlay) {
+  previewPlay.addEventListener('click', () => {
+    if (!previewAudio || !previewAudio.src || previewAudio.src === window.location.href) return;
+    if (previewAudio.paused) { previewAudio.play(); setPlayIcon(true); }
+    else                     { previewAudio.pause(); setPlayIcon(false); }
+  });
+}
+if (previewAudio) {
+  previewAudio.addEventListener('timeupdate', () => {
+    if (previewAudio.duration && previewScrubber)
+      previewScrubber.value = (previewAudio.currentTime / previewAudio.duration) * 100;
+  });
+  previewAudio.addEventListener('ended', () => {
+    setPlayIcon(false);
+    if (previewScrubber) previewScrubber.value = 0;
+  });
+  previewAudio.addEventListener('error', () => setPlayIcon(false));
+}
+if (previewScrubber) {
+  previewScrubber.addEventListener('input', () => {
+    if (previewAudio && previewAudio.duration)
+      previewAudio.currentTime = (previewScrubber.value / 100) * previewAudio.duration;
+  });
+}
+
+document.getElementById('d-audio').addEventListener('change', function() {
+  updateSoundPreview(this.value && !isAutoTone(this.value) ? this.value : null);
+});
+
+// ── Next alarm widget ──
+function getNextAlarm() {
+  const enabled = getAlarmsData().filter(a => a.enabled !== false);
+  if (!enabled.length) return null;
+  const now = new Date();
+  let minMs = Infinity, best = null;
+  enabled.forEach(alarm => {
+    const [hh, mm] = alarm.time.split(':').map(Number);
+    const days = (alarm.days && alarm.days.length) ? alarm.days : [0,1,2,3,4,5,6];
+    days.forEach(d => {
+      // alarm day: 0=Mon…6=Sun → JS getDay(): 1=Mon…0=Sun
+      const targetJsDay = (d + 1) % 7;
+      const cand = new Date(now);
+      cand.setHours(hh, mm, 0, 0);
+      let diff = (targetJsDay - now.getDay() + 7) % 7;
+      if (diff === 0 && cand <= now) diff = 7;
+      cand.setDate(now.getDate() + diff);
+      const ms = cand - now;
+      if (ms < minMs) { minMs = ms; best = { alarm, fireTime: cand }; }
+    });
+  });
+  return best;
+}
+
+function formatCountdown(ms) {
+  const s = Math.floor(ms / 1000);
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+  if (h > 0) return 'in ' + h + 'h ' + m + 'm';
+  if (m > 0) return 'in ' + m + 'm ' + sec + 's';
+  return 'in ' + sec + 's';
+}
+
+function updateNextAlarmWidget() {
+  const next   = getNextAlarm();
+  const nameEl = document.getElementById('next-alarm-name');
+  const timeEl = document.getElementById('next-alarm-time');
+  const cntEl  = document.getElementById('next-alarm-countdown');
+  const pipsEl = document.getElementById('next-alarm-pips');
+  if (!next) {
+    if (nameEl) nameEl.textContent = '';
+    if (timeEl) timeEl.textContent = '—';
+    if (cntEl)  cntEl.textContent  = 'No alarms scheduled';
+    if (pipsEl) pipsEl.innerHTML   = '';
+    return;
+  }
+  const { alarm, fireTime } = next;
+  if (nameEl) nameEl.textContent = alarm.label || '(no label)';
+  if (timeEl) timeEl.textContent = alarm.time;
+  if (cntEl)  cntEl.textContent  = formatCountdown(fireTime - new Date());
+  if (pipsEl) {
+    const ab = ['M','T','W','T','F','S','S'];
+    const days = (alarm.days && alarm.days.length) ? alarm.days : [0,1,2,3,4,5,6];
+    pipsEl.innerHTML = ab.map((d, i) =>
+      '<span class="day-pip' + (days.includes(i) ? ' active' : '') + '">' + d + '</span>'
+    ).join('');
+  }
+}
+setInterval(updateNextAlarmWidget, 1000);
+updateNextAlarmWidget();
 
 // ── Custom Selects ──
 function buildCustomSelect(sel) {
-  const isSmall = sel.classList.contains('gradual-dur');
   const wrap = document.createElement('div');
-  wrap.className = 'csel' + (isSmall ? ' csel-sm' : '');
+  wrap.className = 'csel';
   if (sel.disabled) wrap.classList.add('csel-disabled');
 
   const trigger = document.createElement('button');
-  trigger.type = 'button';
-  trigger.className = 'csel-trigger';
+  trigger.type = 'button'; trigger.className = 'csel-trigger';
   trigger.setAttribute('aria-haspopup', 'listbox');
   trigger.setAttribute('aria-expanded', 'false');
 
-  const lbl = document.createElement('span');
-  lbl.className = 'csel-label';
-
-  const arrow = document.createElement('span');
-  arrow.className = 'csel-arrow';
+  const lbl = document.createElement('span'); lbl.className = 'csel-label';
+  const arrow = document.createElement('span'); arrow.className = 'csel-arrow';
   arrow.setAttribute('aria-hidden', 'true');
   arrow.innerHTML = '<svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   trigger.append(lbl, arrow);
 
   const menu = document.createElement('ul');
-  menu.className = 'csel-menu';
-  menu.setAttribute('role', 'listbox');
-  menu.hidden = true;
+  menu.className = 'csel-menu'; menu.setAttribute('role','listbox'); menu.hidden = true;
 
   Array.from(sel.options).forEach(opt => {
     const li = document.createElement('li');
-    li.className = 'csel-opt';
-    li.setAttribute('role', 'option');
-    li.dataset.value = opt.value;
-    li.tabIndex = -1;
-    li.textContent = opt.textContent;
-    if (opt.selected) { li.setAttribute('aria-selected', 'true'); lbl.textContent = opt.textContent; }
+    li.className = 'csel-opt'; li.setAttribute('role','option');
+    li.dataset.value = opt.value; li.tabIndex = -1; li.textContent = opt.textContent;
+    if (opt.selected) { li.setAttribute('aria-selected','true'); lbl.textContent = opt.textContent; }
     menu.append(li);
   });
 
@@ -901,77 +1120,53 @@ function buildCustomSelect(sel) {
   sel.parentNode.insertBefore(wrap, sel);
   sel.style.cssText = 'position:absolute;opacity:0;pointer-events:none;width:0;height:0;overflow:hidden;';
 
-  const openMenu = () => {
-    trigger.setAttribute('aria-expanded', 'true');
-    menu.hidden = false;
-    (menu.querySelector('[aria-selected="true"]') || menu.firstElementChild)?.focus();
-  };
-  const closeMenu = () => {
-    trigger.setAttribute('aria-expanded', 'false');
-    menu.hidden = true;
-  };
-  const pickOpt = li => {
+  const openMenu  = () => { trigger.setAttribute('aria-expanded','true'); menu.hidden=false; (menu.querySelector('[aria-selected="true"]')||menu.firstElementChild)?.focus(); };
+  const closeMenu = () => { trigger.setAttribute('aria-expanded','false'); menu.hidden=true; };
+  const pickOpt   = li => {
     menu.querySelectorAll('.csel-opt').forEach(o => o.removeAttribute('aria-selected'));
-    li.setAttribute('aria-selected', 'true');
-    lbl.textContent = li.textContent;
-    sel.value = li.dataset.value;
-    sel.dispatchEvent(new Event('change', { bubbles: true }));
-    closeMenu();
-    trigger.focus();
+    li.setAttribute('aria-selected','true'); lbl.textContent=li.textContent;
+    sel.value=li.dataset.value; sel.dispatchEvent(new Event('change',{bubbles:true}));
+    closeMenu(); trigger.focus();
   };
 
   trigger.addEventListener('click', () => menu.hidden ? openMenu() : closeMenu());
-  menu.addEventListener('click', e => { const li = e.target.closest('.csel-opt'); if (li) pickOpt(li); });
+  menu.addEventListener('click', e => { const li=e.target.closest('.csel-opt'); if(li) pickOpt(li); });
   menu.addEventListener('keydown', e => {
-    const opts = [...menu.querySelectorAll('.csel-opt')];
-    const i = opts.indexOf(document.activeElement);
-    if      (e.key === 'ArrowDown') { e.preventDefault(); opts[Math.min(i+1, opts.length-1)]?.focus(); }
-    else if (e.key === 'ArrowUp')   { e.preventDefault(); opts[Math.max(i-1, 0)]?.focus(); }
-    else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (document.activeElement.classList.contains('csel-opt')) pickOpt(document.activeElement); }
-    else if (e.key === 'Escape' || e.key === 'Tab') closeMenu();
+    const opts=[...menu.querySelectorAll('.csel-opt')], i=opts.indexOf(document.activeElement);
+    if      (e.key==='ArrowDown') { e.preventDefault(); opts[Math.min(i+1,opts.length-1)]?.focus(); }
+    else if (e.key==='ArrowUp')   { e.preventDefault(); opts[Math.max(i-1,0)]?.focus(); }
+    else if (e.key==='Enter'||e.key===' ') { e.preventDefault(); if(document.activeElement.classList.contains('csel-opt')) pickOpt(document.activeElement); }
+    else if (e.key==='Escape'||e.key==='Tab') closeMenu();
   });
   trigger.addEventListener('keydown', e => {
-    if      (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openMenu(); }
-    else if (e.key === 'Escape') closeMenu();
+    if      (e.key==='ArrowDown'||e.key==='Enter'||e.key===' ') { e.preventDefault(); openMenu(); }
+    else if (e.key==='Escape') closeMenu();
   });
-  document.addEventListener('pointerdown', e => { if (!wrap.contains(e.target)) closeMenu(); }, true);
-
-  new MutationObserver(() => {
-    wrap.classList.toggle('csel-disabled', sel.disabled);
-  }).observe(sel, { attributes: true, attributeFilter: ['disabled'] });
+  document.addEventListener('pointerdown', e => { if(!wrap.contains(e.target)) closeMenu(); }, true);
+  new MutationObserver(()=>{ wrap.classList.toggle('csel-disabled',sel.disabled); }).observe(sel,{attributes:true,attributeFilter:['disabled']});
 }
 document.querySelectorAll('select').forEach(buildCustomSelect);
 
 // ── File Upload Enhancement ──
 document.querySelectorAll('input[type=file]').forEach(inp => {
   const nameLbl = document.createElement('div');
-  nameLbl.className = 'file-name-display';
-  nameLbl.textContent = 'No file chosen';
-
+  nameLbl.className = 'file-name-display'; nameLbl.textContent = 'No file chosen';
   const btn = document.createElement('button');
-  btn.type = 'button';
-  btn.className = 'file-upload-btn';
-  btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink:0"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>\xA0Choose audio file…';
-  btn.addEventListener('click', () => inp.click());
-
-  inp.style.cssText = 'position:absolute;opacity:0;pointer-events:none;width:0;height:0;overflow:hidden;';
-  inp.addEventListener('change', () => {
-    nameLbl.textContent = inp.files[0] ? inp.files[0].name : 'No file chosen';
-    nameLbl.style.color = inp.files[0] ? 'var(--ink)' : '';
-  });
-
-  const wrap = document.createElement('div');
-  wrap.className = 'file-upload-wrap';
-  inp.parentNode.insertBefore(wrap, inp);
-  wrap.append(btn, nameLbl, inp);
+  btn.type='button'; btn.className='file-upload-btn';
+  btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink:0"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>\xA0Choose audio file…';
+  btn.addEventListener('click', ()=>inp.click());
+  inp.style.cssText='position:absolute;opacity:0;pointer-events:none;width:0;height:0;overflow:hidden;';
+  inp.addEventListener('change', ()=>{ nameLbl.textContent=inp.files[0]?inp.files[0].name:'No file chosen'; nameLbl.style.color=inp.files[0]?'var(--ink)':''; });
+  const wrap=document.createElement('div'); wrap.className='file-upload-wrap';
+  inp.parentNode.insertBefore(wrap,inp); wrap.append(btn,nameLbl,inp);
 });
 
 // ── Live clock ──
 function updateClock() {
   if (document.hidden) return;
   const now = new Date();
-  const hh  = String(now.getHours()).padStart(2, '0');
-  const mm  = String(now.getMinutes()).padStart(2, '0');
+  const hh  = String(now.getHours()).padStart(2,'0');
+  const mm  = String(now.getMinutes()).padStart(2,'0');
   const heroTime = document.getElementById('hero-time');
   if (heroTime) heroTime.textContent = hh + ':' + mm;
   const h = now.getHours();
@@ -985,8 +1180,8 @@ function updateClock() {
 (function scheduleClock() {
   updateClock();
   const now = new Date();
-  const msToNextMinute = (60 - now.getSeconds()) * 1000 - now.getMilliseconds();
-  setTimeout(() => { updateClock(); setInterval(updateClock, 60000); }, msToNextMinute);
+  const ms  = (60 - now.getSeconds()) * 1000 - now.getMilliseconds();
+  setTimeout(() => { updateClock(); setInterval(updateClock, 60000); }, ms);
 })();
 </script>
 </body>
