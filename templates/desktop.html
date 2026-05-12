@@ -517,30 +517,25 @@ button.icon:hover { opacity: 1; background: transparent; box-shadow: none; trans
         <div class="next-alarm-pips" id="next-alarm-pips"></div>
       </div>
 
-      <!-- Today Overview — placeholder values -->
+      {% if sunrise_hhmm or sunset_hhmm %}
       <div class="glass today-overview-card">
         <p class="section-head">Today's Overview</p>
+        {% if sunrise_hhmm %}
         <div class="overview-row">
           <span class="overview-icon">🌅</span>
           <span class="overview-label">Sunrise</span>
-          <span class="overview-value">06:08</span>
+          <span class="overview-value">{{ sunrise_hhmm }}</span>
         </div>
+        {% endif %}
+        {% if sunset_hhmm %}
         <div class="overview-row">
           <span class="overview-icon">🌇</span>
           <span class="overview-label">Sunset</span>
-          <span class="overview-value">20:31</span>
+          <span class="overview-value">{{ sunset_hhmm }}</span>
         </div>
-        <div class="overview-row">
-          <span class="overview-icon">🛌</span>
-          <span class="overview-label">Sleep Window</span>
-          <span class="overview-value">22:00–07:45</span>
-        </div>
-        <div class="overview-row">
-          <span class="overview-icon">⏱</span>
-          <span class="overview-label">Duration</span>
-          <span class="overview-value">8h 3m</span>
-        </div>
+        {% endif %}
       </div>
+      {% endif %}
 
       <button class="fab" type="button" onclick="openDetailPaneForNew()" aria-label="New alarm" title="New alarm">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
@@ -803,15 +798,6 @@ button.icon:hover { opacity: 1; background: transparent; box-shadow: none; trans
               </div>
             </div>
             <input type="range" class="preview-scrubber" id="preview-scrubber" min="0" max="100" value="0" step=".1">
-          </div>
-
-          <!-- Smart Insights -->
-          <div class="glass insight-card">
-            <span class="insight-icon">💡</span>
-            <div>
-              <div class="insight-label">Smart Insights</div>
-              <p class="insight-text">You usually wake up between 07:45 – 08:15</p>
-            </div>
           </div>
 
         </div><!-- #detail-content -->

@@ -1,14 +1,16 @@
 import array
 import json
 import math
+import os
 import re
 import socket
 import subprocess
 import threading
 import time
+import urllib.request
 import uuid
 import wave
-from datetime import datetime
+from datetime import datetime, date
 from pathlib import Path
 
 from flask import Flask, jsonify, redirect, render_template, request, send_from_directory, url_for
@@ -20,11 +22,16 @@ BASE_DIR = Path(__file__).resolve().parent
 AUDIO_DIR = BASE_DIR / "audio"
 ALARMS_FILE = BASE_DIR / "alarms.json"
 AUDIO_META_FILE = BASE_DIR / "audio_meta.json"
+LOCATION_CACHE_FILE = BASE_DIR / "location_cache.json"
 AUDIO_DIR.mkdir(exist_ok=True)
 
-# ALSA mixer control used for gradual volume ramp.
-# Change to "PCM" or another name if your Pi setup differs.
-ALSA_MIXER = "Master"
+# Deployment-specific knobs — override via environment variables.
+ALSA_MIXER = os.environ.get("ALARM_ALSA_MIXER", "Master")
+ALARM_PORT = int(os.environ.get("ALARM_PORT", "8080"))
+TONE_FREQ = float(os.environ.get("ALARM_TONE_FREQ", "880"))
+TONE_DURATION = float(os.environ.get("ALARM_TONE_DURATION", "1.0"))
+TONE_SAMPLE_RATE = int(os.environ.get("ALARM_TONE_SAMPLE_RATE", "44100"))
+FADE_START_PCT = int(os.environ.get("ALARM_FADE_START_PCT", "10"))
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 32 * 1024 * 1024  # 32 MB upload limit
@@ -94,7 +101,53 @@ def save_audio_meta():
     tmp.replace(AUDIO_META_FILE)
 
 
-def generate_tone_wav(dest_wav, frequency=880, duration=1.0, sample_rate=44100):
+def fetch_location() -> dict | None:
+    """Return {lat, lon, tz} from IP geolocation, using a cache file to survive reboots."""
+    if LOCATION_CACHE_FILE.exists():
+        try:
+            with LOCATION_CACHE_FILE.open() as f:
+                return json.load(f)
+        except Exception:
+            pass
+    try:
+        with urllib.request.urlopen("https://ipinfo.io/json", timeout=5) as resp:
+            data = json.loads(resp.read())
+        lat_str, lon_str = data.get("loc", "0,0").split(",")
+        result = {
+            "lat": float(lat_str),
+            "lon": float(lon_str),
+            "tz": data.get("timezone", "UTC"),
+        }
+        tmp = LOCATION_CACHE_FILE.with_suffix(".tmp")
+        with tmp.open("w") as f:
+            json.dump(result, f)
+        tmp.replace(LOCATION_CACHE_FILE)
+        return result
+    except Exception as e:
+        print(f"Location fetch failed: {e}")
+        return None
+
+
+def compute_sun_times(loc: dict | None, for_date: date | None = None) -> tuple[str | None, str | None]:
+    """Return (sunrise_hhmm, sunset_hhmm) for today, or (None, None) on failure."""
+    if loc is None:
+        return None, None
+    try:
+        from astral import LocationInfo
+        from astral.sun import sun
+        target = for_date or date.today()
+        location = LocationInfo("here", "", loc["tz"], loc["lat"], loc["lon"])
+        s = sun(location.observer, date=target, tzinfo=loc["tz"])
+        return s["sunrise"].strftime("%H:%M"), s["sunset"].strftime("%H:%M")
+    except Exception as e:
+        print(f"Sun time calculation failed: {e}")
+        return None, None
+
+
+_location: dict | None = None
+
+
+def generate_tone_wav(dest_wav, frequency=TONE_FREQ, duration=TONE_DURATION, sample_rate=TONE_SAMPLE_RATE):
     n_samples = int(sample_rate * duration)
     samples = array.array("h", [
         int(32767 * math.sin(2 * math.pi * frequency * i / sample_rate))
@@ -187,7 +240,7 @@ def trigger_alarm(alarm):
         global _original_volume
         _original_volume = _get_alsa_volume()
         threading.Thread(
-            target=_volume_ramp_loop, args=(10, vol, fade_in), daemon=True
+            target=_volume_ramp_loop, args=(FADE_START_PCT, vol, fade_in), daemon=True
         ).start()
     else:
         _set_alsa_volume(vol)
@@ -306,6 +359,8 @@ def index():
     else:
         tod = "night"
 
+    sunrise_hhmm, sunset_hhmm = compute_sun_times(_location)
+
     ctx = dict(
         alarms=alarms,
         active=_alarm_active.is_set(),
@@ -317,6 +372,8 @@ def index():
         tod=tod,
         today_weekday=now.weekday(),  # Monday=0
         current_hhmm=now.strftime("%H:%M"),
+        sunrise_hhmm=sunrise_hhmm,
+        sunset_hhmm=sunset_hhmm,
     )
 
     if use_mobile:
@@ -550,9 +607,10 @@ def get_local_ip():
 
 
 def main():
-    global _board
+    global _board, _location
     load_alarms()
     load_audio_meta()
+    _location = fetch_location()
     with Board() as board:
         _board = board
         board.led.state = Led.ON
@@ -562,11 +620,11 @@ def main():
 
         try:
             ip = get_local_ip()
-            print(f"Web UI: http://{ip}:8080")
+            print(f"Web UI: http://{ip}:{ALARM_PORT}")
         except Exception:
             pass
 
-        app.run(host="0.0.0.0", port=8080, debug=False, use_reloader=False, threaded=True)
+        app.run(host="0.0.0.0", port=ALARM_PORT, debug=False, use_reloader=False, threaded=True)
 
 
 if __name__ == "__main__":
