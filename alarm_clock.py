@@ -40,7 +40,7 @@ _active_proc_lock = threading.Lock()
 _board = None
 _led_lock = threading.Lock()
 
-_original_volume: int | None = None  # saved before gradual ramp, restored on silence
+_original_volume = None  # int or None; saved before gradual ramp, restored on silence
 
 # Regex to identify auto-generated per-alarm tone files (8 hex chars + .wav).
 # These are owned by their alarm and deleted with it.
@@ -122,7 +122,7 @@ def stop_active_audio():
             _active_proc.terminate()
 
 
-def _get_alsa_volume() -> int | None:
+def _get_alsa_volume():
     try:
         out = subprocess.check_output(
             ["amixer", "get", ALSA_MIXER], stderr=subprocess.DEVNULL, timeout=2, text=True
