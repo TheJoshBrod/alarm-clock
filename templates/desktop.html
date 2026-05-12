@@ -796,16 +796,6 @@ button.icon:hover { opacity: 1; background: transparent; box-shadow: none; trans
                 </div>
               </div>
 
-              <label class="field">Snooze
-                <select name="snooze_minutes" id="d-snooze">
-                  <option value="0">Off</option>
-                  <option value="5">5 min</option>
-                  <option value="9" selected>9 min</option>
-                  <option value="15">15 min</option>
-                  <option value="30">30 min</option>
-                </select>
-              </label>
-
               <label class="switch-row" style="margin-bottom:.85rem;">
                 <span class="switch-wrap">
                   <input type="checkbox" name="enabled" value="1" id="d-enabled" checked>
@@ -929,10 +919,6 @@ function selectAlarm(id) {
   document.getElementById('d-fadein').value           = fade;
   document.getElementById('d-fadein-val').textContent = fade + ' sec';
 
-  const snoozeSel = document.getElementById('d-snooze');
-  snoozeSel.value = String(alarm.snooze_minutes ?? 9);
-  syncCustomSelect(snoozeSel);
-
   document.getElementById('d-enabled').checked = alarm.enabled !== false;
 
   updateSoundPreview(isLib ? alarm.audio_file : null);
@@ -964,10 +950,6 @@ function openDetailPaneForNew() {
   document.getElementById('d-volume-val').textContent = '80';
   document.getElementById('d-fadein').value           = 0;
   document.getElementById('d-fadein-val').textContent = '0 sec';
-
-  const snoozeSel = document.getElementById('d-snooze');
-  snoozeSel.value = '9';
-  syncCustomSelect(snoozeSel);
 
   document.getElementById('d-enabled').checked = true;
   updateSoundPreview(null);

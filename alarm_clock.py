@@ -65,13 +65,15 @@ def load_alarms():
     if ALARMS_FILE.exists():
         with ALARMS_FILE.open() as f:
             _alarms = json.load(f)
-        # Migrate old gradual/gradual_minutes fields to fade_in_seconds/snooze_minutes/volume.
+        # Migrate old gradual/gradual_minutes fields to fade_in_seconds/volume.
         changed = False
         for a in _alarms:
+            if "snooze_minutes" in a:
+                del a["snooze_minutes"]
+                changed = True
             if "gradual" in a or "gradual_minutes" in a:
                 grad_mins = int(a.pop("gradual_minutes", 10)) if a.pop("gradual", False) else 0
                 a.setdefault("fade_in_seconds", grad_mins * 60)
-                a.setdefault("snooze_minutes", 9)
                 a.setdefault("volume", 80)
                 changed = True
         if changed:
@@ -473,10 +475,6 @@ def create_alarm():
     except ValueError:
         fade_in_seconds = 0
     try:
-        snooze_minutes = max(0, int(request.form.get("snooze_minutes", 9)))
-    except ValueError:
-        snooze_minutes = 9
-    try:
         volume = max(0, min(100, int(request.form.get("volume", 80))))
     except ValueError:
         volume = 80
@@ -506,7 +504,6 @@ def create_alarm():
         "audio_file": audio_filename,
         "enabled": True,
         "fade_in_seconds": fade_in_seconds,
-        "snooze_minutes": snooze_minutes,
         "volume": volume,
     }
     with _state_lock:
@@ -544,10 +541,6 @@ def edit_alarm(alarm_id):
     except ValueError:
         fade_in_seconds = 0
     try:
-        snooze_minutes = max(0, int(request.form.get("snooze_minutes", 9)))
-    except ValueError:
-        snooze_minutes = 9
-    try:
         volume = max(0, min(100, int(request.form.get("volume", 80))))
     except ValueError:
         volume = 80
@@ -568,7 +561,6 @@ def edit_alarm(alarm_id):
                 a["time"] = time_str
                 a["days"] = days_int
                 a["fade_in_seconds"] = fade_in_seconds
-                a["snooze_minutes"] = snooze_minutes
                 a["volume"] = volume
                 a["enabled"] = enabled
                 if audio_file_choice and (AUDIO_DIR / audio_file_choice).exists():
