@@ -94,6 +94,10 @@
 
   .gradual-row { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-bottom: .5rem; }
 
+  .alarm-label-row { display: flex; align-items: center; gap: .2rem; }
+  .alarm-rename-form { display: none; align-items: center; gap: .3rem; }
+  .alarm-rename-form.active { display: flex; }
+
   input[type=file] { font-size: .9rem; }
   .upload-row { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; margin-top: .5rem; }
 </style>
@@ -161,7 +165,18 @@
         {% for a in alarms %}
           <li class="{{ '' if a.enabled else 'disabled' }}">
             <span class="time">{{ a.time }}</span>
-            <span class="label">{{ a.label or '(no label)' }}
+            <span class="label">
+              <span class="alarm-label-row" id="al-{{ loop.index }}">
+                <span>{{ a.label or '(no label)' }}</span>
+                <button type="button" class="icon" style="font-size:.85rem;" title="Rename"
+                        onclick="startAlarmRename({{ loop.index }}, {{ a.label | tojson }})">✏️</button>
+              </span>
+              <form class="alarm-rename-form" id="arf-{{ loop.index }}" method="post"
+                    action="{{ url_for('rename_alarm', alarm_id=a.id) }}">
+                <input class="rename-input" type="text" name="label" id="ari-{{ loop.index }}" placeholder="Label">
+                <button class="primary" type="submit" style="padding:.3rem .6rem;font-size:.85rem;">OK</button>
+                <button type="button" class="rename-cancel" onclick="cancelAlarmRename({{ loop.index }})">✕</button>
+              </form>
               <div class="days-pill">
                 {% if a.days|length == 7 %}every day
                 {% else %}{% for d in a.days %}{{ day_names[d] }}{% if not loop.last %} {% endif %}{% endfor %}
@@ -298,7 +313,26 @@ document.addEventListener('keydown', e => {
   document.querySelectorAll('.rename-form.active').forEach(form => {
     cancelRename(form.id.replace('rf-', ''));
   });
+  document.querySelectorAll('.alarm-rename-form.active').forEach(form => {
+    cancelAlarmRename(form.id.replace('arf-', ''));
+  });
 });
+
+// Alarm rename
+function startAlarmRename(idx, currentLabel) {
+  document.getElementById('al-' + idx).style.display = 'none';
+  const arf = document.getElementById('arf-' + idx);
+  arf.classList.add('active');
+  const ari = document.getElementById('ari-' + idx);
+  ari.value = currentLabel;
+  ari.focus();
+  ari.select();
+}
+
+function cancelAlarmRename(idx) {
+  document.getElementById('al-' + idx).style.display = '';
+  document.getElementById('arf-' + idx).classList.remove('active');
+}
 </script>
 <div id="toast"></div>
 </body>

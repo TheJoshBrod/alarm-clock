@@ -49,6 +49,22 @@
     border: 1px solid #8886; background: #8881; color: inherit; cursor: pointer;
   }
   button.toggle:active { background: #8883; }
+
+  button.icon { padding: .2rem .35rem; font-size: .95rem; border: none; background: none;
+                opacity: .5; cursor: pointer; }
+  button.icon:active { opacity: 1; }
+
+  .alarm-label-row { display: flex; align-items: center; gap: .2rem; }
+  .alarm-rename-form { display: none; align-items: center; gap: .3rem; width: 100%; margin-top: .2rem; }
+  .alarm-rename-form.active { display: flex; }
+  .rename-input { flex: 1; padding: .45rem .6rem; font-size: .95rem;
+                  border: 1px solid #48a; border-radius: 7px; background: transparent; color: inherit; }
+  button.ok { padding: .45rem .7rem; font-size: .9rem; border-radius: 7px;
+              border: 1px solid #48a; color: #48a; background: transparent; cursor: pointer; }
+  button.ok:active { background: #48a2; }
+  button.cancel-btn { padding: .45rem .55rem; font-size: .85rem; border-radius: 7px;
+                      border: 1px solid #8886; background: #8881; color: inherit; cursor: pointer; }
+  button.cancel-btn:active { background: #8883; }
 </style>
 </head>
 <body>
@@ -86,7 +102,18 @@
     {% for a in alarms %}
       <li class="{{ '' if a.enabled else 'disabled' }}">
         <span class="time">{{ a.time }}</span>
-        <span class="label">{{ a.label or '(no label)' }}
+        <span class="label">
+          <span class="alarm-label-row" id="al-{{ loop.index }}">
+            <span>{{ a.label or '(no label)' }}</span>
+            <button type="button" class="icon" title="Rename"
+                    onclick="startAlarmRename({{ loop.index }}, {{ a.label | tojson }})">✏️</button>
+          </span>
+          <form class="alarm-rename-form" id="arf-{{ loop.index }}" method="post"
+                action="{{ url_for('rename_alarm', alarm_id=a.id) }}">
+            <input class="rename-input" type="text" name="label" id="ari-{{ loop.index }}" placeholder="Label">
+            <button class="ok" type="submit">OK</button>
+            <button type="button" class="cancel-btn" onclick="cancelAlarmRename({{ loop.index }})">✕</button>
+          </form>
           <div class="days-pill">
             {% if a.days|length == 7 %}every day
             {% else %}{% for d in a.days %}{{ day_names[d] }}{% if not loop.last %} {% endif %}{% endfor %}
@@ -101,5 +128,28 @@
       <li>No alarms yet.</li>
     {% endfor %}
   </ul>
+<script>
+function startAlarmRename(idx, currentLabel) {
+  document.getElementById('al-' + idx).style.display = 'none';
+  const arf = document.getElementById('arf-' + idx);
+  arf.classList.add('active');
+  const ari = document.getElementById('ari-' + idx);
+  ari.value = currentLabel;
+  ari.focus();
+  ari.select();
+}
+
+function cancelAlarmRename(idx) {
+  document.getElementById('al-' + idx).style.display = '';
+  document.getElementById('arf-' + idx).classList.remove('active');
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  document.querySelectorAll('.alarm-rename-form.active').forEach(form => {
+    cancelAlarmRename(form.id.replace('arf-', ''));
+  });
+});
+</script>
 </body>
 </html>

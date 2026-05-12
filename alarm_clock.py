@@ -423,6 +423,18 @@ def delete_alarm(alarm_id):
     return redirect(url_for("index"))
 
 
+@app.route("/alarms/<alarm_id>/rename", methods=["POST"])
+def rename_alarm(alarm_id):
+    new_label = request.form.get("label", "").strip()
+    with _state_lock:
+        for a in _alarms:
+            if a["id"] == alarm_id:
+                a["label"] = new_label
+                break
+        save_alarms()
+    return redirect(url_for("index"))
+
+
 @app.route("/alarms/<alarm_id>/toggle", methods=["POST"])
 def toggle_alarm(alarm_id):
     with _state_lock:
