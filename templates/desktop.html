@@ -92,6 +92,8 @@
 
   .audio-actions { display: flex; gap: .25rem; align-items: center; }
 
+  .gradual-row { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-bottom: .5rem; }
+
   input[type=file] { font-size: .9rem; }
   .upload-row { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; margin-top: .5rem; }
 </style>
@@ -136,7 +138,20 @@
               <label><input type="checkbox" name="days" value="{{ i }}">{{ day_names[i] }}</label>
             {% endfor %}
           </div>
-          <button class="primary" type="submit">Add alarm</button>
+          <div class="gradual-row">
+            <label style="flex-direction:row;align-items:center;gap:.4rem;margin-bottom:.25rem;">
+              <input type="checkbox" name="gradual" value="1" id="gradual-check"
+                     onchange="document.getElementById('gradual-dur').disabled=!this.checked">
+              Gradually increase volume
+            </label>
+            <select name="gradual_minutes" id="gradual-dur" disabled style="width:auto;font-size:.85rem;padding:.3rem .5rem;">
+              <option value="2">over 2 min</option>
+              <option value="5">over 5 min</option>
+              <option value="10" selected>over 10 min</option>
+              <option value="20">over 20 min</option>
+            </select>
+          </div>
+          <button class="primary" type="submit" style="margin-top:.5rem;">Add alarm</button>
         </form>
       </div>
 
@@ -152,6 +167,7 @@
                 {% else %}{% for d in a.days %}{{ day_names[d] }}{% if not loop.last %} {% endif %}{% endfor %}
                 {% endif %}
                 · {{ a.audio_file }}
+                {% if a.gradual %}· <span title="Gradual volume ramp over {{ a.gradual_minutes }} min">↑vol {{ a.gradual_minutes }}m</span>{% endif %}
               </div>
             </span>
             <form method="post" action="{{ url_for('toggle_alarm', alarm_id=a.id) }}">

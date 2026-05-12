@@ -22,6 +22,10 @@ ALARMS_FILE = BASE_DIR / "alarms.json"
 AUDIO_META_FILE = BASE_DIR / "audio_meta.json"
 AUDIO_DIR.mkdir(exist_ok=True)
 
+# ALSA mixer control used for gradual volume ramp.
+# Change to "PCM" or another name if your Pi setup differs.
+ALSA_MIXER = "Master"
+
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 32 * 1024 * 1024  # 32 MB upload limit
 
@@ -35,6 +39,8 @@ _active_proc_lock = threading.Lock()
 
 _board = None
 _led_lock = threading.Lock()
+
+_original_volume: int | None = None  # saved before gradual ramp, restored on silence
 
 # Regex to identify auto-generated per-alarm tone files (8 hex chars + .wav).
 # These are owned by their alarm and deleted with it.
@@ -116,6 +122,41 @@ def stop_active_audio():
             _active_proc.terminate()
 
 
+def _get_alsa_volume() -> int | None:
+    try:
+        out = subprocess.check_output(
+            ["amixer", "get", ALSA_MIXER], stderr=subprocess.DEVNULL, timeout=2, text=True
+        )
+        m = re.search(r'\[(\d+)%\]', out)
+        return int(m.group(1)) if m else None
+    except Exception:
+        return None
+
+
+def _set_alsa_volume(pct: int):
+    try:
+        subprocess.run(
+            ["amixer", "sset", ALSA_MIXER, f"{max(0, min(100, pct))}%"],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=2,
+        )
+    except Exception:
+        pass
+
+
+def _volume_ramp_loop(start_pct: int, end_pct: int, duration_sec: int):
+    # One step every ~10 s, minimum 10 steps.
+    steps = max(10, duration_sec // 10)
+    interval = duration_sec / steps
+    _set_alsa_volume(start_pct)
+    for i in range(1, steps + 1):
+        for _ in range(int(interval * 10)):
+            if not _alarm_active.is_set():
+                return
+            time.sleep(0.1)
+        pct = start_pct + (end_pct - start_pct) * i // steps
+        _set_alsa_volume(pct)
+
+
 def trigger_alarm(alarm):
     if _alarm_active.is_set():
         return
@@ -132,6 +173,13 @@ def trigger_alarm(alarm):
     threading.Thread(
         target=play_loop_until_stopped, args=(wav_path,), daemon=True
     ).start()
+    if alarm.get("gradual"):
+        global _original_volume
+        _original_volume = _get_alsa_volume()
+        duration_sec = int(alarm.get("gradual_minutes", 10)) * 60
+        threading.Thread(
+            target=_volume_ramp_loop, args=(10, 100, duration_sec), daemon=True
+        ).start()
 
 
 def silence_alarm():
@@ -139,6 +187,10 @@ def silence_alarm():
         return
     _alarm_active.clear()
     stop_active_audio()
+    global _original_volume
+    if _original_volume is not None:
+        _set_alsa_volume(_original_volume)
+        _original_volume = None
     with _led_lock:
         if _board is not None:
             _board.led.state = Led.ON
@@ -314,6 +366,11 @@ def create_alarm():
     time_str = request.form.get("time", "").strip()
     days = request.form.getlist("days")
     audio_file_choice = request.form.get("audio_file", "").strip()
+    gradual = bool(request.form.get("gradual"))
+    try:
+        gradual_minutes = max(1, int(request.form.get("gradual_minutes", 10)))
+    except ValueError:
+        gradual_minutes = 10
     days_int = sorted({int(d) for d in days}) if days else list(range(7))
 
     if not time_str:
@@ -339,6 +396,8 @@ def create_alarm():
         "days": days_int,
         "audio_file": audio_filename,
         "enabled": True,
+        "gradual": gradual,
+        "gradual_minutes": gradual_minutes,
     }
     with _state_lock:
         _alarms.append(alarm)
