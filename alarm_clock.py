@@ -281,10 +281,31 @@ def index():
     with _state_lock:
         alarms = sorted(_alarms, key=lambda a: a["time"])
 
+    now = datetime.now()
+    h = now.hour
+    if 5 <= h < 8:
+        tod = "dawn"
+    elif 8 <= h < 17:
+        tod = "day"
+    elif 17 <= h < 20:
+        tod = "dusk"
+    else:
+        tod = "night"
+
+    ctx = dict(
+        alarms=alarms,
+        active=_alarm_active.is_set(),
+        audio_files=_library_audio_files(),
+        current_hour=h,
+        current_minute=now.minute,
+        weekday_name=now.strftime("%A"),
+        date_str=now.strftime("%b %-d"),
+        tod=tod,
+    )
+
     if use_mobile:
-        return render_template("mobile.html", alarms=alarms, active=_alarm_active.is_set(), audio_files=_library_audio_files())
-    return render_template("desktop.html", alarms=alarms, active=_alarm_active.is_set(),
-                           audio_files=_library_audio_files(), audio_meta=_audio_meta)
+        return render_template("mobile.html", **ctx)
+    return render_template("desktop.html", **ctx, audio_meta=_audio_meta)
 
 
 @app.route("/silence", methods=["POST"])

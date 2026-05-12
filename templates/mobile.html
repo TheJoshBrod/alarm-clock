@@ -1,120 +1,431 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-tod="{{ tod }}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Alarm Clock</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  :root { color-scheme: light dark; }
-  *, *::before, *::after { box-sizing: border-box; }
-  body { font-family: system-ui, sans-serif; max-width: 480px; margin: 0 auto; padding: 1.2rem 1rem; }
-  h1 { margin-top: 0; font-size: 1.5rem; }
-  h2 { font-size: 1rem; margin: 1.2rem 0 .5rem; }
+/* ── Tokens ── */
+:root {
+  --font-ui:   'Inter', system-ui, sans-serif;
+  --font-disp: 'Fraunces', Georgia, serif;
+  --ease:      cubic-bezier(.2,.7,.1,1);
+  --dur-f: 110ms; --dur-m: 220ms; --dur-s: 420ms;
 
-  .panel { padding: 1rem; border: 1px solid #8884; border-radius: 10px; margin-bottom: 1rem; }
+  --bg-a: #f4ede2; --bg-b: #cfe0f0;
+  --ink: #1a1814;
+  --ink-dim: rgba(26,24,20,.5);
+  --surface: rgba(255,255,255,.68);
+  --surface-hi: rgba(255,255,255,.86);
+  --border: rgba(26,24,20,.1);
+  --accent: #7a5fa0;
+  --accent-dim: rgba(122,95,160,.22);
+  --accent-fg: #fff;
+  --danger: #c44;
+  --danger-dim: rgba(204,68,68,.18);
+}
+html[data-tod="dawn"] {
+  --bg-a: #f5c9a4; --bg-b: #b8a6d9;
+  --ink: #2d1f40; --ink-dim: rgba(45,31,64,.5);
+  --accent: #b5622e; --accent-dim: rgba(181,98,46,.22);
+}
+html[data-tod="dusk"] {
+  --bg-a: #e4955e; --bg-b: #5c4a7a;
+  --ink: #fdf0e6; --ink-dim: rgba(253,240,230,.5);
+  --surface: rgba(255,255,255,.1); --surface-hi: rgba(255,255,255,.18);
+  --border: rgba(255,255,255,.14);
+  --accent: #e9c080; --accent-dim: rgba(233,192,128,.22); --accent-fg: #2a1827;
+  color-scheme: dark;
+}
+html[data-tod="night"] {
+  --bg-a: #181a2c; --bg-b: #0a0b12;
+  --ink: #e6e3f2; --ink-dim: rgba(230,227,242,.42);
+  --surface: rgba(255,255,255,.07); --surface-hi: rgba(255,255,255,.12);
+  --border: rgba(255,255,255,.1);
+  --accent: #9880cc; --accent-dim: rgba(152,128,204,.22);
+  color-scheme: dark;
+}
 
-  label { display: flex; flex-direction: column; font-size: .95rem; gap: .3rem; margin-bottom: .6rem; }
-  input[type=text], input[type=time], select {
-    padding: .6rem .7rem; font-size: 1.05rem; border: 1px solid #8886; border-radius: 8px;
-    background: transparent; color: inherit; width: 100%;
+/* ── Reset ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-family: var(--font-ui); color: var(--ink); font-size: 16px; }
+body { min-height: 100dvh; }
+
+/* ── Backdrop ── */
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: -1;
+  background: radial-gradient(ellipse 160% 120% at 30% 5%, var(--bg-a) 0%, var(--bg-b) 100%);
+  transition: background var(--dur-s) var(--ease);
+}
+
+/* ── Glass ── */
+.glass {
+  background: var(--surface);
+  backdrop-filter: blur(22px) saturate(1.5);
+  -webkit-backdrop-filter: blur(22px) saturate(1.5);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  box-shadow:
+    0 1px 0 rgba(255,255,255,.06) inset,
+    0 12px 32px -16px rgba(0,0,0,.32);
+}
+
+/* ── Page shell ── */
+.page { max-width: 480px; margin: 0 auto; padding: 0 1rem 3.5rem; }
+
+/* ── Hero ── */
+.hero { padding: 2rem 0 1.5rem; }
+.hero-clock {
+  font-family: var(--font-disp);
+  font-size: clamp(3.8rem, 20vw, 6rem);
+  font-weight: 300; font-optical-sizing: auto;
+  font-variant-numeric: tabular-nums;
+  line-height: 1; letter-spacing: -.02em;
+  margin-bottom: .3rem;
+}
+.hero-date { font-size: .88rem; color: var(--ink-dim); font-weight: 500; }
+
+/* ── Ringing banner ── */
+.banner {
+  display: flex; align-items: center; gap: 1rem;
+  padding: 1.1rem 1.25rem; margin-bottom: 1rem;
+  border-color: rgba(204,68,68,.3);
+  background: rgba(204,68,68,.08);
+}
+.led-ring {
+  flex-shrink: 0; width: 2.5rem; height: 2.5rem;
+  display: flex; align-items: center; justify-content: center;
+}
+.led-ring svg { width: 100%; height: 100%; }
+@media (prefers-reduced-motion: no-preference) {
+  .led-outer { transform-origin: 50% 50%; animation: led-pulse 1.4s ease-in-out infinite; }
+  @keyframes led-pulse {
+    0%, 100% { transform: scale(1); opacity: .7; }
+    50% { transform: scale(1.4); opacity: 0; }
   }
-  .days { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: .6rem; }
-  .days label { flex-direction: row; align-items: center; gap: .3rem; font-size: .9rem; margin-bottom: 0; }
-  .hint { font-size: .8rem; opacity: .65; margin-bottom: .35rem; }
+}
+.banner-body { flex: 1; }
+.banner-label { font-size: .95rem; font-weight: 700; color: #c44; margin-bottom: .5rem; }
+button.silence {
+  width: 100%; padding: .75rem 1.2rem; font-size: 1.05rem; font-weight: 700;
+  border-radius: 12px; border: none;
+  background: #c44; color: white; cursor: pointer; font-family: var(--font-ui);
+  transition: background var(--dur-f) var(--ease);
+}
+button.silence:active { background: #a33; }
+button.silence:focus-visible { outline: 2px solid #c44; outline-offset: 3px; }
 
-  button { padding: .55rem .9rem; font-size: .95rem; border-radius: 8px;
-           border: 1px solid #8886; background: #8881; color: inherit; cursor: pointer; }
-  button:active { background: #8883; }
-  button.add { width: 100%; padding: .7rem; font-size: 1.05rem; border-color: #48a; color: #48a; background: transparent; }
-  button.add:active { background: #48a2; }
-  button.primary { border-color: #48a; color: #48a; }
-  button.danger { border-color: #c44; color: #c44; }
+/* ── Section label ── */
+.section-head {
+  font-size: .68rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--ink-dim); padding: 0 .25rem .55rem;
+}
 
-  .banner {
-    padding: .9rem 1rem; background: #c44; color: white; border-radius: 8px;
-    margin-bottom: 1rem; font-weight: 600; font-size: 1rem; line-height: 1.4;
+/* ── Add-alarm card ── */
+.add-alarm-card { margin-bottom: .75rem; overflow: hidden; }
+.add-alarm-toggle {
+  width: 100%; display: flex; align-items: center; gap: .65rem;
+  padding: 1rem 1.15rem; background: transparent; border: none; color: var(--ink);
+  font-family: var(--font-ui); font-size: 1rem; font-weight: 600; cursor: pointer;
+  border-radius: 18px; text-align: left; min-height: 44px;
+  transition: background var(--dur-f) var(--ease);
+}
+.add-alarm-toggle:active { background: var(--surface-hi); }
+.add-alarm-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.add-icon {
+  width: 1.65rem; height: 1.65rem; border-radius: 50%;
+  background: var(--accent); color: var(--accent-fg);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.15rem; line-height: 1; flex-shrink: 0; font-style: normal;
+  transition: transform var(--dur-m) var(--ease);
+}
+.add-alarm-toggle[aria-expanded="true"] .add-icon { transform: rotate(45deg); }
+.add-form-body {
+  padding: .5rem 1.15rem 1.15rem;
+  border-top: 1px solid var(--border);
+}
+
+/* ── Alarm list ── */
+.alarms { list-style: none; display: flex; flex-direction: column; gap: .6rem; }
+.alarm-item { overflow: clip; }
+.alarm-item.alarm-disabled { opacity: .45; }
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes card-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
   }
+  .alarm-item {
+    animation: card-in var(--dur-m) var(--ease) both;
+    animation-delay: calc(var(--i, 0) * 50ms);
+  }
+}
 
-  ul.alarms { list-style: none; padding: 0; margin: 0; }
-  ul.alarms li { display: block; border-bottom: 1px solid #8882; }
-  ul.alarms li:last-child { border-bottom: none; }
-  .alarm-summary { display: flex; align-items: center; gap: .5rem; padding: .7rem .25rem;
-                   cursor: pointer; border-radius: 8px; user-select: none; }
-  .alarm-summary:active { background: #8881; }
-  .time { font-size: 1.5rem; font-variant-numeric: tabular-nums; min-width: 4.5ch; }
-  .label { flex: 1; }
-  .days-pill { font-size: .75rem; opacity: .7; }
-  .disabled { opacity: .4; }
-  .alarm-caret { margin-left: auto; opacity: .4; font-size: 1.15rem; line-height: 1;
-                 transition: transform .15s; flex-shrink: 0; display: inline-block; }
-  .alarm-caret.open { transform: rotate(90deg); }
-  .alarm-panel { padding: .75rem 0 .75rem; border-top: 1px solid #8882; }
-  .panel-footer { display: flex; gap: .5rem; margin-top: .75rem; flex-wrap: wrap; }
-  .gradual-row { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-bottom: .6rem; }
+.alarm-summary {
+  display: flex; align-items: center; gap: .65rem;
+  padding: 1rem 1.15rem; cursor: pointer; border-radius: 18px;
+  user-select: none; min-height: 44px;
+  transition: background var(--dur-f) var(--ease);
+}
+.alarm-summary:active { background: var(--surface-hi); }
+.alarm-time {
+  font-family: var(--font-disp); font-size: 1.75rem; font-weight: 600;
+  font-variant-numeric: tabular-nums; min-width: 4.4ch;
+  line-height: 1; letter-spacing: -.01em;
+}
+.alarm-info { flex: 1; min-width: 0; }
+.alarm-lbl {
+  font-weight: 600; font-size: .92rem;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  display: flex; align-items: center; gap: .4rem;
+}
+.paused-pill {
+  font-size: .65rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--ink-dim); border: 1px solid var(--border); border-radius: 99px;
+  padding: .1rem .4rem; flex-shrink: 0;
+}
+.days-display { display: flex; gap: .2rem; margin-top: .35rem; }
+.day-pip {
+  width: 1.3rem; height: 1.3rem; border-radius: 50%;
+  font-size: .65rem; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  border: 1.5px solid var(--border); color: var(--ink-dim);
+}
+.day-pip.active { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+.alarm-caret {
+  opacity: .4; font-size: 1.15rem; line-height: 1;
+  transition: transform var(--dur-f) var(--ease); flex-shrink: 0; display: inline-block;
+}
+.alarm-caret.open { transform: rotate(90deg); }
+
+/* alarm expand panel */
+.alarm-panel {
+  border-top: 1px solid var(--border);
+  padding: .9rem 1.15rem .9rem;
+}
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes panel-in {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .alarm-panel { animation: panel-in var(--dur-m) var(--ease) both; }
+}
+
+/* ── Form fields ── */
+label.field {
+  display: flex; flex-direction: column; gap: .3rem;
+  font-size: .72rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--ink-dim); margin-bottom: .65rem;
+}
+input[type=text], input[type=time], select {
+  padding: .6rem .75rem; font-size: 1rem; font-family: var(--font-ui);
+  border: 1px solid var(--border); border-radius: 10px;
+  background: var(--surface); color: var(--ink); width: 100%;
+  transition: border-color var(--dur-f) var(--ease), box-shadow var(--dur-f) var(--ease);
+}
+input[type=text]:focus, input[type=time]:focus, select:focus {
+  outline: none; border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+
+/* ── Day-dot pickers ── */
+.day-dots { display: flex; gap: .35rem; flex-wrap: wrap; margin-bottom: .65rem; }
+.day-dot { position: relative; }
+.day-dot input {
+  position: absolute; clip: rect(0 0 0 0); clip-path: inset(100%);
+  width: 1px; height: 1px; overflow: hidden; white-space: nowrap;
+}
+.day-dot span {
+  display: flex; align-items: center; justify-content: center;
+  width: 2.3rem; height: 2.3rem; border-radius: 50%;
+  border: 1.5px solid var(--border); font-size: .72rem; font-weight: 700;
+  cursor: pointer; color: var(--ink-dim); user-select: none;
+  transition: background var(--dur-f) var(--ease), color var(--dur-f) var(--ease), border-color var(--dur-f) var(--ease);
+}
+.day-dot input:checked + span { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+.day-dot input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ── CSS toggle switch ── */
+.switch-row {
+  display: flex; align-items: center; gap: .55rem;
+  margin-bottom: .65rem; flex-wrap: wrap; font-size: .9rem; font-weight: 500;
+}
+.switch-wrap { position: relative; width: 2.6rem; height: 1.4rem; flex-shrink: 0; }
+.switch-wrap input {
+  position: absolute; clip: rect(0 0 0 0); clip-path: inset(100%);
+  width: 1px; height: 1px; overflow: hidden;
+}
+.switch-track {
+  position: absolute; inset: 0; border-radius: 99px;
+  background: var(--border); transition: background var(--dur-f) var(--ease);
+}
+.switch-thumb {
+  position: absolute; top: 2px; left: 2px;
+  width: calc(1.4rem - 4px); height: calc(1.4rem - 4px);
+  border-radius: 50%; background: white;
+  box-shadow: 0 1px 3px rgba(0,0,0,.3);
+  transition: transform var(--dur-f) var(--ease);
+}
+.switch-wrap input:checked ~ .switch-track { background: var(--accent); }
+.switch-wrap input:checked ~ .switch-thumb { transform: translateX(calc(2.6rem - 1.4rem)); }
+.switch-wrap input:focus-visible ~ .switch-track { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+select.gradual-dur { width: auto; font-size: .9rem; padding: .4rem .6rem; }
+select.gradual-dur:disabled { opacity: .4; }
+
+.hint { font-size: .78rem; color: var(--ink-dim); margin-bottom: .45rem; }
+
+/* enabled row */
+.enabled-row { display: flex; align-items: center; gap: .5rem; margin-bottom: .65rem; font-size: .9rem; font-weight: 500; min-height: 44px; }
+.enabled-row input[type=checkbox] { width: 1.15rem; height: 1.15rem; accent-color: var(--accent); cursor: pointer; }
+
+/* ── Buttons ── */
+button {
+  display: inline-flex; align-items: center; justify-content: center; gap: .3rem;
+  padding: .6rem 1rem; font-size: .92rem; font-weight: 600; font-family: var(--font-ui);
+  border-radius: 10px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--ink); cursor: pointer;
+  white-space: nowrap; min-height: 44px;
+  transition: background var(--dur-f) var(--ease), transform var(--dur-f) var(--ease);
+}
+button:active { transform: scale(.97); background: var(--surface-hi); }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button.primary { border-color: var(--accent); color: var(--accent); }
+button.primary:active { background: var(--accent-dim); }
+button.add-btn { width: 100%; font-size: 1rem; border-color: var(--accent); color: var(--accent); }
+button.danger { border-color: var(--danger); color: var(--danger); }
+button.danger:active { background: var(--danger-dim); }
+
+.panel-footer { display: flex; gap: .5rem; margin-top: .75rem; flex-wrap: wrap; }
+.gradual-row { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-bottom: .65rem; }
+
+/* ── Toast ── */
+#toast {
+  position: fixed; bottom: 1.4rem; left: 50%;
+  transform: translateX(-50%) translateY(130%);
+  background: var(--surface); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border); color: var(--ink);
+  padding: .6rem 1.15rem; border-radius: 10px;
+  font-size: .9rem; white-space: nowrap;
+  box-shadow: 0 8px 24px -8px rgba(0,0,0,.4);
+  transition: transform var(--dur-m) var(--ease), opacity var(--dur-m) var(--ease);
+  opacity: 0; pointer-events: none; z-index: 999;
+}
+#toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
 </style>
 </head>
 <body>
-  <h1>Alarms</h1>
+<div class="page">
+
+  <header class="hero">
+    <div class="hero-clock" id="hero-time">{{ '%02d:%02d' | format(current_hour, current_minute) }}</div>
+    <div class="hero-date" id="hero-date">{{ weekday_name }}, {{ date_str }}</div>
+  </header>
 
   {% if active %}
-  <div class="banner">
-    Alarm is ringing — get out of bed and press the button to silence it.
+  <div class="banner glass" aria-live="assertive" role="alert">
+    <div class="led-ring" aria-hidden="true">
+      <svg viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle class="led-outer" cx="22" cy="22" r="20" stroke="#c44" stroke-width="2" opacity=".6"/>
+        <circle cx="22" cy="22" r="12" stroke="#c44" stroke-width="2" opacity=".4"/>
+        <circle cx="22" cy="22" r="5" fill="#c44"/>
+      </svg>
+    </div>
+    <div class="banner-body">
+      <div class="banner-label">Alarm is ringing!</div>
+      <form method="post" action="{{ url_for('silence') }}">
+        <button class="silence" type="submit">Silence Alarm</button>
+      </form>
+    </div>
   </div>
   {% endif %}
 
-  <div class="panel">
-    <h2 style="margin-top:0;">Add alarm</h2>
-    <form method="post" action="{{ url_for('create_alarm') }}">
-      <label>Time
-        <input type="time" name="time" required>
-      </label>
-      <label>Label (optional)
-        <input type="text" name="label" placeholder="Wake up">
-      </label>
-      <div class="hint">Days (leave all unchecked = every day)</div>
-      <div class="days">
-        {% set day_names = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'] %}
-        {% for i in range(7) %}
-          <label><input type="checkbox" name="days" value="{{ i }}">{{ day_names[i] }}</label>
-        {% endfor %}
+  <p class="section-head">Alarms</p>
+
+  <!-- Add alarm collapsible -->
+  <div class="glass add-alarm-card">
+    <button type="button" class="add-alarm-toggle" id="add-alarm-btn"
+            onclick="toggleAddAlarm()" aria-expanded="false">
+      <span class="add-icon" aria-hidden="true">+</span>
+      New Alarm
+    </button>
+    <div id="add-alarm-form" hidden>
+      <div class="add-form-body">
+        <form method="post" action="{{ url_for('create_alarm') }}">
+          <label class="field">Time
+            <input type="time" name="time" required>
+          </label>
+          <label class="field">Label
+            <input type="text" name="label" placeholder="Wake up">
+          </label>
+          <div class="hint">Days (none checked = every day)</div>
+          <div class="day-dots">
+            {% set day_abbr = ['M','T','W','T','F','S','S'] %}
+            {% for i in range(7) %}
+              <label class="day-dot" title="{{ ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][i] }}">
+                <input type="checkbox" name="days" value="{{ i }}">
+                <span>{{ day_abbr[i] }}</span>
+              </label>
+            {% endfor %}
+          </div>
+          <button class="add-btn" type="submit">Add Alarm</button>
+        </form>
       </div>
-      <button class="add" type="submit">Add alarm</button>
-    </form>
+    </div>
   </div>
 
-  <h2>Alarms</h2>
+  <!-- Alarm list -->
+  {% if not alarms %}
+    <p style="opacity:.45; padding:.6rem .25rem; font-size:.9rem;">No alarms yet.</p>
+  {% endif %}
   <ul class="alarms">
+    {% set day_abbr = ['M','T','W','T','F','S','S'] %}
     {% set day_names = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'] %}
     {% set lib_names = audio_files | map(attribute='name') | list %}
     {% for a in alarms %}
-      <li id="ali-{{ a.id }}" class="{{ '' if a.enabled else 'disabled' }}">
-        <div class="alarm-summary" onclick="toggleAlarmPanel('{{ a.id }}')">
-          <span class="time">{{ a.time }}</span>
-          <span class="label">
-            {{ a.label or '(no label)' }}
-            <div class="days-pill">
-              {% if a.days|length == 7 %}every day
-              {% else %}{% for d in a.days %}{{ day_names[d] }}{% if not loop.last %} {% endif %}{% endfor %}
-              {% endif %}
+      <li id="ali-{{ a.id }}" style="--i: {{ loop.index0 }}"
+          class="glass alarm-item {{ '' if a.enabled else 'alarm-disabled' }}">
+        <div class="alarm-summary"
+             onclick="toggleAlarmPanel('{{ a.id }}')"
+             id="sum-{{ a.id }}" aria-expanded="false" role="button" tabindex="0"
+             onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleAlarmPanel('{{ a.id }}');}">
+          <span class="alarm-time">{{ a.time }}</span>
+          <div class="alarm-info">
+            <div class="alarm-lbl">
+              {{ a.label or '(no label)' }}
+              {% if not a.enabled %}<span class="paused-pill">Paused</span>{% endif %}
             </div>
-          </span>
-          <span class="alarm-caret" id="caret-{{ a.id }}">›</span>
+            <div class="days-display">
+              {% for i in range(7) %}
+                <span class="day-pip {{ 'active' if i in a.days else '' }}"
+                      title="{{ day_names[i] }}">{{ day_abbr[i] }}</span>
+              {% endfor %}
+            </div>
+          </div>
+          <span class="alarm-caret" id="caret-{{ a.id }}" aria-hidden="true">›</span>
         </div>
         <div class="alarm-panel" id="ap-{{ a.id }}" hidden>
           <form method="post" action="{{ url_for('edit_alarm', alarm_id=a.id) }}">
-            <label>Label
+            <label class="field">Label
               <input type="text" name="label" value="{{ a.label or '' }}" placeholder="Wake up">
             </label>
-            <label>Time
+            <label class="field">Time
               <input type="time" name="time" value="{{ a.time }}" required>
             </label>
-            <div class="hint">Days (unchecked = every day)</div>
-            <div class="days">
+            <div class="hint">Days (none checked = every day)</div>
+            <div class="day-dots">
               {% for i in range(7) %}
-                <label><input type="checkbox" name="days" value="{{ i }}" {% if i in a.days %}checked{% endif %}>{{ day_names[i] }}</label>
+                <label class="day-dot" title="{{ day_names[i] }}">
+                  <input type="checkbox" name="days" value="{{ i }}" {% if i in a.days %}checked{% endif %}>
+                  <span>{{ day_abbr[i] }}</span>
+                </label>
               {% endfor %}
             </div>
-            <label>Audio
+            <label class="field">Audio
               <select name="audio_file">
                 <option value="" {% if a.audio_file not in lib_names %}selected{% endif %}>— Default tone —</option>
                 {% for f in audio_files %}
@@ -123,57 +434,109 @@
               </select>
             </label>
             <div class="gradual-row">
-              <label style="flex-direction:row;align-items:center;gap:.4rem;margin-bottom:0;">
-                <input type="checkbox" name="gradual" value="1" id="grad-{{ a.id }}"
-                       {% if a.gradual %}checked{% endif %}
-                       onchange="document.getElementById('graddur-{{ a.id }}').disabled=!this.checked">
+              <label class="switch-row" style="margin-bottom:0;">
+                <span class="switch-wrap">
+                  <input type="checkbox" name="gradual" value="1" id="grad-{{ a.id }}"
+                         {% if a.gradual %}checked{% endif %}
+                         onchange="document.getElementById('graddur-{{ a.id }}').disabled=!this.checked">
+                  <span class="switch-track"></span>
+                  <span class="switch-thumb"></span>
+                </span>
                 Gradually increase volume
               </label>
               <select name="gradual_minutes" id="graddur-{{ a.id }}"
-                      {% if not a.gradual %}disabled{% endif %}
-                      style="width:auto;font-size:.9rem;padding:.4rem .6rem;">
-                <option value="2" {% if a.gradual_minutes == 2 %}selected{% endif %}>over 2 min</option>
-                <option value="5" {% if a.gradual_minutes == 5 %}selected{% endif %}>over 5 min</option>
-                <option value="10" {% if a.gradual_minutes not in [2, 5, 20] or a.gradual_minutes == 10 %}selected{% endif %}>over 10 min</option>
+                      {% if not a.gradual %}disabled{% endif %} class="gradual-dur">
+                <option value="2"  {% if a.gradual_minutes == 2  %}selected{% endif %}>over 2 min</option>
+                <option value="5"  {% if a.gradual_minutes == 5  %}selected{% endif %}>over 5 min</option>
+                <option value="10" {% if a.gradual_minutes not in [2,5,20] or a.gradual_minutes == 10 %}selected{% endif %}>over 10 min</option>
                 <option value="20" {% if a.gradual_minutes == 20 %}selected{% endif %}>over 20 min</option>
               </select>
             </div>
-            <label style="flex-direction:row;align-items:center;gap:.4rem;margin-bottom:.5rem;">
-              <input type="checkbox" name="enabled" value="1" {% if a.enabled %}checked{% endif %}>
-              Enabled
-            </label>
+            <div class="enabled-row">
+              <input type="checkbox" name="enabled" value="1" id="en-{{ a.id }}" {% if a.enabled %}checked{% endif %}>
+              <label for="en-{{ a.id }}">Enabled</label>
+            </div>
             <div class="panel-footer">
               <button class="primary" type="submit">Save</button>
               <button type="button" onclick="closeAlarmPanel('{{ a.id }}')">Cancel</button>
             </div>
           </form>
           <form method="post" action="{{ url_for('delete_alarm', alarm_id=a.id) }}" style="margin-top:.5rem;">
-            <button class="danger" type="submit">Delete alarm</button>
+            <button class="danger" type="submit">Delete Alarm</button>
           </form>
         </div>
       </li>
-    {% else %}
-      <li style="opacity:.5;padding:.7rem 0;">No alarms yet.</li>
     {% endfor %}
   </ul>
 
+</div><!-- .page -->
+
+<div id="toast" aria-live="polite"></div>
+
 <script>
+// ── Toast ──
+let _toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+// ── Add-alarm toggle ──
+function toggleAddAlarm() {
+  const form = document.getElementById('add-alarm-form');
+  const btn  = document.getElementById('add-alarm-btn');
+  const open = !form.hidden;
+  form.hidden = open;
+  btn.setAttribute('aria-expanded', String(!open));
+}
+
+// ── Alarm panels ──
 function toggleAlarmPanel(id) {
   const panel = document.getElementById('ap-' + id);
   const caret = document.getElementById('caret-' + id);
+  const sum   = document.getElementById('sum-' + id);
   const isOpen = !panel.hidden;
   document.querySelectorAll('.alarm-panel').forEach(p => { p.hidden = true; });
   document.querySelectorAll('.alarm-caret').forEach(c => { c.classList.remove('open'); });
+  document.querySelectorAll('[id^="sum-"]').forEach(s => { s.setAttribute('aria-expanded', 'false'); });
   if (!isOpen) {
     panel.hidden = false;
     caret.classList.add('open');
+    sum.setAttribute('aria-expanded', 'true');
   }
 }
-
 function closeAlarmPanel(id) {
   document.getElementById('ap-' + id).hidden = true;
   document.getElementById('caret-' + id).classList.remove('open');
+  const sum = document.getElementById('sum-' + id);
+  if (sum) sum.setAttribute('aria-expanded', 'false');
 }
+
+// ── Live clock ──
+function updateClock() {
+  if (document.hidden) return;
+  const now = new Date();
+  const hh  = String(now.getHours()).padStart(2, '0');
+  const mm  = String(now.getMinutes()).padStart(2, '0');
+  const heroTime = document.getElementById('hero-time');
+  if (heroTime) heroTime.textContent = hh + ':' + mm;
+  const h = now.getHours();
+  let tod;
+  if      (h >= 5  && h < 8)  tod = 'dawn';
+  else if (h >= 8  && h < 17) tod = 'day';
+  else if (h >= 17 && h < 20) tod = 'dusk';
+  else                         tod = 'night';
+  document.documentElement.dataset.tod = tod;
+}
+(function scheduleClock() {
+  updateClock();
+  const now = new Date();
+  const msToNextMinute = (60 - now.getSeconds()) * 1000 - now.getMilliseconds();
+  setTimeout(() => { updateClock(); setInterval(updateClock, 60000); }, msToNextMinute);
+})();
 </script>
 </body>
 </html>
