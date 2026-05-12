@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Alarm Clock</title>
+<style>
+  :root { color-scheme: light dark; }
+  *, *::before, *::after { box-sizing: border-box; }
+  body { font-family: system-ui, sans-serif; max-width: 480px; margin: 0 auto; padding: 1.2rem 1rem; }
+  h1 { margin-top: 0; font-size: 1.5rem; }
+  h2 { font-size: 1rem; margin: 1.2rem 0 .5rem; }
+
+  .panel { padding: 1rem; border: 1px solid #8884; border-radius: 10px; margin-bottom: 1rem; }
+
+  label { display: flex; flex-direction: column; font-size: .95rem; gap: .3rem; margin-bottom: .6rem; }
+  input[type=text], input[type=time] {
+    padding: .6rem .7rem; font-size: 1.05rem; border: 1px solid #8886; border-radius: 8px;
+    background: transparent; color: inherit; width: 100%;
+  }
+  .days { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: .6rem; }
+  .days label { flex-direction: row; align-items: center; gap: .3rem; font-size: .9rem; margin-bottom: 0; }
+  .hint { font-size: .8rem; opacity: .65; margin-bottom: .35rem; }
+
+  button.add {
+    width: 100%; padding: .7rem; font-size: 1.05rem; border-radius: 8px;
+    border: 1px solid #48a; color: #48a; background: transparent; cursor: pointer;
+  }
+  button.add:active { background: #48a2; }
+
+  .banner {
+    padding: .9rem 1rem; background: #c44; color: white; border-radius: 8px;
+    margin-bottom: 1rem; font-weight: 600; font-size: 1rem; line-height: 1.4;
+  }
+
+  ul.alarms { list-style: none; padding: 0; margin: 0; }
+  ul.alarms li {
+    display: flex; align-items: center; gap: .5rem; padding: .65rem 0;
+    border-bottom: 1px solid #8882; flex-wrap: wrap;
+  }
+  ul.alarms li:last-child { border-bottom: none; }
+  .time { font-size: 1.5rem; font-variant-numeric: tabular-nums; min-width: 4.5ch; }
+  .label { flex: 1; }
+  .days-pill { font-size: .75rem; opacity: .7; }
+  .disabled { opacity: .4; }
+
+  button.toggle {
+    padding: .5rem .9rem; font-size: .95rem; border-radius: 8px;
+    border: 1px solid #8886; background: #8881; color: inherit; cursor: pointer;
+  }
+  button.toggle:active { background: #8883; }
+</style>
+</head>
+<body>
+  <h1>Alarms</h1>
+
+  {% if active %}
+  <div class="banner">
+    Alarm is ringing — get out of bed and press the button to silence it.
+  </div>
+  {% endif %}
+
+  <div class="panel">
+    <h2 style="margin-top:0;">Add alarm</h2>
+    <form method="post" action="{{ url_for('create_alarm') }}">
+      <label>Time
+        <input type="time" name="time" required>
+      </label>
+      <label>Label (optional)
+        <input type="text" name="label" placeholder="Wake up">
+      </label>
+      <div class="hint">Days (leave all unchecked = every day)</div>
+      <div class="days">
+        {% set day_names = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'] %}
+        {% for i in range(7) %}
+          <label><input type="checkbox" name="days" value="{{ i }}">{{ day_names[i] }}</label>
+        {% endfor %}
+      </div>
+      <button class="add" type="submit">Add alarm</button>
+    </form>
+  </div>
+
+  <h2>Alarms</h2>
+  <ul class="alarms">
+    {% set day_names = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'] %}
+    {% for a in alarms %}
+      <li class="{{ '' if a.enabled else 'disabled' }}">
+        <span class="time">{{ a.time }}</span>
+        <span class="label">{{ a.label or '(no label)' }}
+          <div class="days-pill">
+            {% if a.days|length == 7 %}every day
+            {% else %}{% for d in a.days %}{{ day_names[d] }}{% if not loop.last %} {% endif %}{% endfor %}
+            {% endif %}
+          </div>
+        </span>
+        <form method="post" action="{{ url_for('toggle_alarm', alarm_id=a.id) }}">
+          <button class="toggle" type="submit">{{ 'Disable' if a.enabled else 'Enable' }}</button>
+        </form>
+      </li>
+    {% else %}
+      <li>No alarms yet.</li>
+    {% endfor %}
+  </ul>
+</body>
+</html>

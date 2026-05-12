@@ -1,6 +1,7 @@
 import array
 import json
 import math
+import re
 import socket
 import subprocess
 import threading
@@ -11,6 +12,7 @@ from datetime import datetime
 from pathlib import Path
 
 from flask import Flask, jsonify, redirect, render_template, request, url_for
+from werkzeug.utils import secure_filename
 
 from aiy.board import Board, Led
 
@@ -20,6 +22,7 @@ ALARMS_FILE = BASE_DIR / "alarms.json"
 AUDIO_DIR.mkdir(exist_ok=True)
 
 app = Flask(__name__)
+app.config["MAX_CONTENT_LENGTH"] = 32 * 1024 * 1024  # 32 MB upload limit
 
 _state_lock = threading.Lock()
 _alarms = []
@@ -31,6 +34,11 @@ _active_proc_lock = threading.Lock()
 
 _board = None
 _led_lock = threading.Lock()
+
+# Regex to identify auto-generated per-alarm tone files (8 hex chars + .wav).
+# These are owned by their alarm and deleted with it.
+# Uploaded library files have user-chosen names and are not auto-deleted.
+_TONE_RE = re.compile(r"^[0-9a-f]{8}\.wav$")
 
 
 def load_alarms():
@@ -64,10 +72,15 @@ def generate_tone_wav(dest_wav, frequency=880, duration=1.0, sample_rate=44100):
 
 def play_loop_until_stopped(wav_path):
     global _active_proc
+    ext = Path(wav_path).suffix.lower()
+    if ext == ".mp3":
+        cmd = ["mpg123", "-q", str(wav_path)]
+    else:
+        cmd = ["aplay", "-q", str(wav_path)]
     while _alarm_active.is_set():
         with _active_proc_lock:
             _active_proc = subprocess.Popen(
-                ["aplay", "-q", str(wav_path)],
+                cmd,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )
@@ -159,11 +172,78 @@ def button_loop():
             time.sleep(1)
 
 
+def _is_mobile():
+    ua = request.headers.get("User-Agent", "")
+    return any(token in ua for token in ("Mobi", "Android", "iPhone", "iPad"))
+
+
+def _library_audio_files():
+    """Return uploaded/named audio files (not auto-generated per-alarm tones)."""
+    return sorted(
+        p.name for p in AUDIO_DIR.iterdir()
+        if p.is_file() and not _TONE_RE.match(p.name) and p.suffix.lower() in (".wav", ".mp3")
+    )
+
+
+def _validate_audio_bytes(data: bytes, ext: str) -> bool:
+    if ext == ".wav":
+        return data[:4] == b"RIFF" and data[8:12] == b"WAVE"
+    if ext == ".mp3":
+        # ID3 tag header OR MPEG sync frame
+        return data[:3] == b"ID3" or (len(data) >= 2 and data[0] == 0xFF and data[1] in (0xFB, 0xFA, 0xF3, 0xF2))
+    return False
+
+
 @app.route("/")
 def index():
+    view = request.args.get("view", "")
+    use_mobile = (view == "mobile") or (view != "desktop" and _is_mobile())
+
     with _state_lock:
         alarms = sorted(_alarms, key=lambda a: a["time"])
-    return render_template("index.html", alarms=alarms, active=_alarm_active.is_set())
+
+    if use_mobile:
+        return render_template("mobile.html", alarms=alarms, active=_alarm_active.is_set())
+    return render_template("desktop.html", alarms=alarms, active=_alarm_active.is_set(),
+                           audio_files=_library_audio_files())
+
+
+@app.route("/silence", methods=["POST"])
+def silence():
+    silence_alarm()
+    return redirect(url_for("index"))
+
+
+@app.route("/audio/upload", methods=["POST"])
+def upload_audio():
+    f = request.files.get("audio")
+    if not f or not f.filename:
+        return "No file provided", 400
+
+    ext = Path(f.filename).suffix.lower()
+    if ext not in (".wav", ".mp3"):
+        return "Only .wav and .mp3 files are accepted", 400
+
+    raw = f.read()
+    if not _validate_audio_bytes(raw, ext):
+        return f"File does not look like a valid {ext[1:].upper()}", 400
+
+    safe_name = secure_filename(f.filename).lower()
+    dest = AUDIO_DIR / safe_name
+    dest.write_bytes(raw)
+    return redirect(url_for("index"))
+
+
+@app.route("/audio/<filename>/delete", methods=["POST"])
+def delete_audio(filename):
+    with _state_lock:
+        in_use = any(a["audio_file"] == filename for a in _alarms)
+    if in_use:
+        return "File is referenced by an alarm — remove or reassign the alarm first", 409
+    target = AUDIO_DIR / secure_filename(filename)
+    if target.exists() and not _TONE_RE.match(target.name):
+        target.unlink()
+    return redirect(url_for("index"))
 
 
 @app.route("/alarms", methods=["POST"])
@@ -171,6 +251,7 @@ def create_alarm():
     label = request.form.get("label", "").strip()
     time_str = request.form.get("time", "").strip()
     days = request.form.getlist("days")
+    audio_file_choice = request.form.get("audio_file", "").strip()
     days_int = sorted({int(d) for d in days}) if days else list(range(7))
 
     if not time_str:
@@ -181,15 +262,20 @@ def create_alarm():
         return "time must be HH:MM", 400
 
     alarm_id = uuid.uuid4().hex[:8]
-    wav_path = AUDIO_DIR / f"{alarm_id}.wav"
-    generate_tone_wav(wav_path)
+
+    if audio_file_choice and (AUDIO_DIR / audio_file_choice).exists():
+        audio_filename = audio_file_choice
+    else:
+        wav_path = AUDIO_DIR / f"{alarm_id}.wav"
+        generate_tone_wav(wav_path)
+        audio_filename = wav_path.name
 
     alarm = {
         "id": alarm_id,
         "label": label,
         "time": time_str,
         "days": days_int,
-        "audio_file": wav_path.name,
+        "audio_file": audio_filename,
         "enabled": True,
     }
     with _state_lock:
@@ -204,9 +290,11 @@ def delete_alarm(alarm_id):
         keep = []
         for a in _alarms:
             if a["id"] == alarm_id:
-                wav = AUDIO_DIR / a["audio_file"]
-                if wav.exists():
-                    wav.unlink()
+                # Only delete the audio file if it's the auto-generated tone for this alarm.
+                if _TONE_RE.match(a["audio_file"]):
+                    wav = AUDIO_DIR / a["audio_file"]
+                    if wav.exists():
+                        wav.unlink()
             else:
                 keep.append(a)
         _alarms[:] = keep
@@ -255,9 +343,6 @@ def main():
         except Exception:
             pass
 
-        # Threaded so the scheduler / button continue while requests are served.
-        # use_reloader=False because the reloader spawns a second process and
-        # would grab the GPIO button a second time.
         app.run(host="0.0.0.0", port=8080, debug=False, use_reloader=False, threaded=True)
 
 

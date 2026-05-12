@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Alarm Clock — Desktop</title>
+<style>
+  :root { color-scheme: light dark; }
+  *, *::before, *::after { box-sizing: border-box; }
+  body { font-family: system-ui, sans-serif; max-width: 960px; margin: 0 auto; padding: 1.5rem 1.5rem; }
+  h1 { margin-top: 0; font-size: 1.6rem; }
+  h2 { font-size: 1.1rem; margin: 1.5rem 0 .6rem; }
+
+  .layout { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; align-items: start; }
+  @media (max-width: 640px) { .layout { grid-template-columns: 1fr; } }
+
+  .panel { padding: 1rem; border: 1px solid #8884; border-radius: 10px; }
+
+  label { display: flex; flex-direction: column; font-size: .9rem; gap: .25rem; margin-bottom: .5rem; }
+  input[type=text], input[type=time], select {
+    padding: .45rem .6rem; font-size: 1rem; border: 1px solid #8886; border-radius: 6px;
+    background: transparent; color: inherit; width: 100%;
+  }
+  .days { display: flex; flex-wrap: wrap; gap: .35rem; margin-bottom: .5rem; }
+  .days label { flex-direction: row; align-items: center; gap: .25rem; font-size: .85rem; margin-bottom: 0; }
+  .hint { font-size: .8rem; opacity: .65; margin-bottom: .3rem; }
+
+  button { padding: .45rem .8rem; font-size: .95rem; border-radius: 6px; border: 1px solid #8886;
+           background: #8881; color: inherit; cursor: pointer; white-space: nowrap; }
+  button:hover { background: #8883; }
+  button.primary { border-color: #48a; color: #48a; }
+  button.danger { border-color: #c44; color: #c44; }
+  button.silence { background: #c44; color: white; border-color: #c44; font-size: 1rem; padding: .55rem 1.2rem; }
+  button.silence:hover { background: #a33; }
+
+  .banner { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+            padding: .8rem 1rem; background: #c44; color: white; border-radius: 8px;
+            margin-bottom: 1.2rem; font-weight: 600; }
+  .banner p { margin: 0; flex: 1; }
+
+  ul.alarms { list-style: none; padding: 0; margin: 0; }
+  ul.alarms li { display: flex; align-items: center; gap: .5rem; padding: .5rem 0;
+                 border-bottom: 1px solid #8882; flex-wrap: wrap; }
+  ul.alarms li:last-child { border-bottom: none; }
+  .time { font-size: 1.35rem; font-variant-numeric: tabular-nums; min-width: 4.5ch; }
+  .label { flex: 1; min-width: 6ch; }
+  .days-pill { font-size: .75rem; opacity: .7; }
+  .disabled { opacity: .4; }
+
+  ul.audio-list { list-style: none; padding: 0; margin: 0; }
+  ul.audio-list li { display: flex; align-items: center; gap: .5rem; padding: .4rem 0;
+                     border-bottom: 1px solid #8882; flex-wrap: wrap; }
+  ul.audio-list li:last-child { border-bottom: none; }
+  .filename { flex: 1; font-family: monospace; font-size: .9rem; }
+
+  input[type=file] { font-size: .9rem; }
+  .upload-row { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; margin-top: .5rem; }
+</style>
+</head>
+<body>
+  <h1>Alarm Clock <span style="font-size:.7rem;opacity:.5;">desktop</span></h1>
+
+  {% if active %}
+  <div class="banner">
+    <p>Alarm is ringing!</p>
+    <form method="post" action="{{ url_for('silence') }}">
+      <button class="silence" type="submit">Silence alarm</button>
+    </form>
+  </div>
+  {% endif %}
+
+  <div class="layout">
+
+    <!-- Left column: add alarm + alarm list -->
+    <div>
+      <div class="panel">
+        <h2 style="margin-top:0;">Add alarm</h2>
+        <form method="post" action="{{ url_for('create_alarm') }}">
+          <label>Time
+            <input type="time" name="time" required>
+          </label>
+          <label>Label (optional)
+            <input type="text" name="label" placeholder="Wake up">
+          </label>
+          <label>Audio
+            <select name="audio_file">
+              <option value="">— Default tone —</option>
+              {% for f in audio_files %}
+                <option value="{{ f }}">{{ f }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <div class="hint">Days (leave all unchecked = every day)</div>
+          <div class="days">
+            {% set day_names = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'] %}
+            {% for i in range(7) %}
+              <label><input type="checkbox" name="days" value="{{ i }}">{{ day_names[i] }}</label>
+            {% endfor %}
+          </div>
+          <button class="primary" type="submit">Add alarm</button>
+        </form>
+      </div>
+
+      <h2>Alarms</h2>
+      <ul class="alarms">
+        {% set day_names = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'] %}
+        {% for a in alarms %}
+          <li class="{{ '' if a.enabled else 'disabled' }}">
+            <span class="time">{{ a.time }}</span>
+            <span class="label">{{ a.label or '(no label)' }}
+              <div class="days-pill">
+                {% if a.days|length == 7 %}every day
+                {% else %}{% for d in a.days %}{{ day_names[d] }}{% if not loop.last %} {% endif %}{% endfor %}
+                {% endif %}
+                · {{ a.audio_file }}
+              </div>
+            </span>
+            <form method="post" action="{{ url_for('toggle_alarm', alarm_id=a.id) }}">
+              <button type="submit">{{ 'Disable' if a.enabled else 'Enable' }}</button>
+            </form>
+            <form method="post" action="{{ url_for('delete_alarm', alarm_id=a.id) }}">
+              <button type="submit" class="danger">Delete</button>
+            </form>
+          </li>
+        {% else %}
+          <li>No alarms yet.</li>
+        {% endfor %}
+      </ul>
+    </div>
+
+    <!-- Right column: audio library -->
+    <div>
+      <div class="panel">
+        <h2 style="margin-top:0;">Audio library</h2>
+        <form method="post" action="{{ url_for('upload_audio') }}" enctype="multipart/form-data">
+          <label>Upload .wav or .mp3
+            <div class="upload-row">
+              <input type="file" name="audio" accept=".wav,.mp3" required>
+              <button class="primary" type="submit">Upload</button>
+            </div>
+          </label>
+        </form>
+
+        <ul class="audio-list" style="margin-top:.8rem;">
+          {% for f in audio_files %}
+            <li>
+              <span class="filename">{{ f }}</span>
+              <form method="post" action="{{ url_for('delete_audio', filename=f) }}">
+                <button type="submit" class="danger">Delete</button>
+              </form>
+            </li>
+          {% else %}
+            <li style="opacity:.5;">No uploaded audio files yet.</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>
