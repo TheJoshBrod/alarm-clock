@@ -1,11 +1,12 @@
+import array
 import json
-import os
+import math
 import socket
 import subprocess
-import sys
 import threading
 import time
 import uuid
+import wave
 from datetime import datetime
 from pathlib import Path
 
@@ -48,43 +49,17 @@ def save_alarms():
     tmp.replace(ALARMS_FILE)
 
 
-def _yt_dlp_cmd():
-    # Prefer a local standalone binary (current yt-dlp, no Python version cap).
-    # Fall back to the pip-installed module if the binary isn't present.
-    binary = os.environ.get("YTDLP_BIN", str(BASE_DIR / "yt-dlp"))
-    if os.path.isfile(binary) and os.access(binary, os.X_OK):
-        return [binary]
-    return [sys.executable, "-m", "yt_dlp"]
-
-
-def download_audio(url, dest_wav):
-    player_clients = os.environ.get("YTDLP_PLAYER_CLIENTS", "web,mweb")
-    cmd = _yt_dlp_cmd() + [
-        "-x",
-        "--audio-format", "wav",
-        "--audio-quality", "0",
-        "-f", "bestaudio/best",
-        "--no-playlist",
-        "--extractor-args", f"youtube:player_client={player_clients}",
-        "-o", str(dest_wav.with_suffix(".%(ext)s")),
-    ]
-    cookies = os.environ.get("YTDLP_COOKIES")
-    if cookies:
-        cmd += ["--cookies", cookies]
-    cmd.append(url)
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    if result.returncode != 0:
-        last_lines = "\n".join((result.stderr or result.stdout).splitlines()[-20:])
-        raise RuntimeError(f"yt-dlp failed (exit {result.returncode}):\n{last_lines}")
-    if not dest_wav.exists():
-        # yt-dlp may have produced a slightly different filename — find it
-        candidates = list(AUDIO_DIR.glob(f"{dest_wav.stem}.*"))
-        wav_candidates = [c for c in candidates if c.suffix == ".wav"]
-        if wav_candidates:
-            wav_candidates[0].rename(dest_wav)
-        else:
-            last_lines = "\n".join((result.stderr or result.stdout).splitlines()[-20:])
-            raise RuntimeError(f"yt-dlp did not produce a wav file:\n{last_lines}")
+def generate_tone_wav(dest_wav, frequency=880, duration=1.0, sample_rate=44100):
+    n_samples = int(sample_rate * duration)
+    samples = array.array("h", [
+        int(32767 * math.sin(2 * math.pi * frequency * i / sample_rate))
+        for i in range(n_samples)
+    ])
+    with wave.open(str(dest_wav), "w") as wf:
+        wf.setnchannels(1)
+        wf.setsampwidth(2)
+        wf.setframerate(sample_rate)
+        wf.writeframes(samples.tobytes())
 
 
 def play_loop_until_stopped(wav_path):
@@ -100,7 +75,6 @@ def play_loop_until_stopped(wav_path):
         proc.wait()
         with _active_proc_lock:
             _active_proc = None
-        # If the alarm is still active, loop the audio.
 
 
 def stop_active_audio():
@@ -196,12 +170,11 @@ def index():
 def create_alarm():
     label = request.form.get("label", "").strip()
     time_str = request.form.get("time", "").strip()
-    youtube_url = request.form.get("youtube_url", "").strip()
     days = request.form.getlist("days")
     days_int = sorted({int(d) for d in days}) if days else list(range(7))
 
-    if not time_str or not youtube_url:
-        return "time and youtube_url are required", 400
+    if not time_str:
+        return "time is required", 400
     try:
         datetime.strptime(time_str, "%H:%M")
     except ValueError:
@@ -209,22 +182,13 @@ def create_alarm():
 
     alarm_id = uuid.uuid4().hex[:8]
     wav_path = AUDIO_DIR / f"{alarm_id}.wav"
-    try:
-        download_audio(youtube_url, wav_path)
-    except (subprocess.CalledProcessError, RuntimeError) as e:
-        for f in AUDIO_DIR.glob(f"{alarm_id}.*"):
-            try:
-                f.unlink()
-            except FileNotFoundError:
-                pass
-        return f"Failed to download audio: {e}", 500
+    generate_tone_wav(wav_path)
 
     alarm = {
         "id": alarm_id,
         "label": label,
         "time": time_str,
         "days": days_int,
-        "youtube_url": youtube_url,
         "audio_file": wav_path.name,
         "enabled": True,
     }
