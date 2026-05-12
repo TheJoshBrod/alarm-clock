@@ -19,6 +19,7 @@ from aiy.board import Board, Led
 BASE_DIR = Path(__file__).resolve().parent
 AUDIO_DIR = BASE_DIR / "audio"
 ALARMS_FILE = BASE_DIR / "alarms.json"
+AUDIO_META_FILE = BASE_DIR / "audio_meta.json"
 AUDIO_DIR.mkdir(exist_ok=True)
 
 app = Flask(__name__)
@@ -41,6 +42,9 @@ _led_lock = threading.Lock()
 _TONE_RE = re.compile(r"^[0-9a-f]{8}\.wav$")
 
 
+_audio_meta: dict = {}  # filename -> {"favorite": bool}
+
+
 def load_alarms():
     global _alarms
     if ALARMS_FILE.exists():
@@ -55,6 +59,22 @@ def save_alarms():
     with tmp.open("w") as f:
         json.dump(_alarms, f, indent=2)
     tmp.replace(ALARMS_FILE)
+
+
+def load_audio_meta():
+    global _audio_meta
+    if AUDIO_META_FILE.exists():
+        with AUDIO_META_FILE.open() as f:
+            _audio_meta = json.load(f)
+    else:
+        _audio_meta = {}
+
+
+def save_audio_meta():
+    tmp = AUDIO_META_FILE.with_suffix(".tmp")
+    with tmp.open("w") as f:
+        json.dump(_audio_meta, f, indent=2)
+    tmp.replace(AUDIO_META_FILE)
 
 
 def generate_tone_wav(dest_wav, frequency=880, duration=1.0, sample_rate=44100):
@@ -178,11 +198,14 @@ def _is_mobile():
 
 
 def _library_audio_files():
-    """Return uploaded/named audio files (not auto-generated per-alarm tones)."""
-    return sorted(
+    """Return audio file dicts sorted favorites-first then alphabetically."""
+    names = sorted(
         p.name for p in AUDIO_DIR.iterdir()
         if p.is_file() and not _TONE_RE.match(p.name) and p.suffix.lower() in (".wav", ".mp3")
     )
+    files = [{"name": n, "favorite": bool(_audio_meta.get(n, {}).get("favorite"))} for n in names]
+    files.sort(key=lambda f: (not f["favorite"], f["name"].lower()))
+    return files
 
 
 def _validate_audio_bytes(data: bytes, ext: str) -> bool:
@@ -205,7 +228,7 @@ def index():
     if use_mobile:
         return render_template("mobile.html", alarms=alarms, active=_alarm_active.is_set())
     return render_template("desktop.html", alarms=alarms, active=_alarm_active.is_set(),
-                           audio_files=_library_audio_files())
+                           audio_files=_library_audio_files(), audio_meta=_audio_meta)
 
 
 @app.route("/silence", methods=["POST"])
@@ -231,6 +254,44 @@ def upload_audio():
     safe_name = secure_filename(f.filename).lower()
     dest = AUDIO_DIR / safe_name
     dest.write_bytes(raw)
+    return redirect(url_for("index"))
+
+
+@app.route("/audio/<filename>/rename", methods=["POST"])
+def rename_audio(filename):
+    new_name = request.form.get("new_name", "").strip()
+    if not new_name:
+        return "new_name is required", 400
+    ext = Path(new_name).suffix.lower()
+    if ext not in (".wav", ".mp3"):
+        return "New name must end in .wav or .mp3", 400
+    new_name = secure_filename(new_name).lower()
+    src = AUDIO_DIR / secure_filename(filename)
+    dst = AUDIO_DIR / new_name
+    if not src.exists() or _TONE_RE.match(src.name):
+        return "File not found", 404
+    if dst.exists():
+        return "A file with that name already exists", 409
+    src.rename(dst)
+    with _state_lock:
+        for a in _alarms:
+            if a["audio_file"] == filename:
+                a["audio_file"] = new_name
+        save_alarms()
+    if filename in _audio_meta:
+        _audio_meta[new_name] = _audio_meta.pop(filename)
+        save_audio_meta()
+    return redirect(url_for("index"))
+
+
+@app.route("/audio/<filename>/favorite", methods=["POST"])
+def favorite_audio(filename):
+    target = AUDIO_DIR / secure_filename(filename)
+    if not target.exists():
+        return "File not found", 404
+    meta = _audio_meta.setdefault(filename, {})
+    meta["favorite"] = not meta.get("favorite", False)
+    save_audio_meta()
     return redirect(url_for("index"))
 
 
@@ -330,6 +391,7 @@ def get_local_ip():
 def main():
     global _board
     load_alarms()
+    load_audio_meta()
     with Board() as board:
         _board = board
         board.led.state = Led.ON

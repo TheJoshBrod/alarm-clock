@@ -32,6 +32,8 @@
   button.danger { border-color: #c44; color: #c44; }
   button.silence { background: #c44; color: white; border-color: #c44; font-size: 1rem; padding: .55rem 1.2rem; }
   button.silence:hover { background: #a33; }
+  button.icon { padding: .3rem .45rem; font-size: 1rem; border: none; background: none; opacity: .55; }
+  button.icon:hover { opacity: 1; background: none; }
 
   .banner { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
             padding: .8rem 1rem; background: #c44; color: white; border-radius: 8px;
@@ -47,11 +49,40 @@
   .days-pill { font-size: .75rem; opacity: .7; }
   .disabled { opacity: .4; }
 
+  /* Audio library */
+  .audio-toolbar { display: flex; gap: .5rem; align-items: center; margin-bottom: .6rem; }
+  .audio-toolbar input[type=search] {
+    flex: 1; padding: .4rem .6rem; font-size: .9rem; border: 1px solid #8886; border-radius: 6px;
+    background: transparent; color: inherit;
+  }
+
   ul.audio-list { list-style: none; padding: 0; margin: 0; }
-  ul.audio-list li { display: flex; align-items: center; gap: .5rem; padding: .4rem 0;
-                     border-bottom: 1px solid #8882; flex-wrap: wrap; }
+  ul.audio-list li {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: .4rem;
+    padding: .35rem 0;
+    border-bottom: 1px solid #8882;
+  }
   ul.audio-list li:last-child { border-bottom: none; }
-  .filename { flex: 1; font-family: monospace; font-size: .9rem; }
+  ul.audio-list li[data-hidden] { display: none; }
+
+  .fav-form { display: contents; }
+  .fav-btn { font-size: 1.1rem; padding: .2rem .3rem; border: none; background: none;
+             cursor: pointer; opacity: .35; transition: opacity .15s; line-height: 1; }
+  .fav-btn:hover { opacity: .8; }
+  .fav-btn.is-fav { opacity: 1; }
+
+  .filename-cell { display: flex; align-items: center; gap: .4rem; min-width: 0; overflow: hidden; }
+  .filename { font-family: monospace; font-size: .9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rename-form { display: none; align-items: center; gap: .3rem; width: 100%; }
+  .rename-form.active { display: flex; }
+  .rename-input { flex: 1; padding: .3rem .5rem; font-size: .85rem; font-family: monospace;
+                  border: 1px solid #48a; border-radius: 5px; background: transparent; color: inherit; }
+  .rename-cancel { font-size: .8rem; padding: .25rem .45rem; }
+
+  .audio-actions { display: flex; gap: .25rem; align-items: center; }
 
   input[type=file] { font-size: .9rem; }
   .upload-row { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; margin-top: .5rem; }
@@ -86,7 +117,7 @@
             <select name="audio_file">
               <option value="">— Default tone —</option>
               {% for f in audio_files %}
-                <option value="{{ f }}">{{ f }}</option>
+                <option value="{{ f.name }}">{{ '★ ' if f.favorite else '' }}{{ f.name }}</option>
               {% endfor %}
             </select>
           </label>
@@ -132,6 +163,7 @@
     <div>
       <div class="panel">
         <h2 style="margin-top:0;">Audio library</h2>
+
         <form method="post" action="{{ url_for('upload_audio') }}" enctype="multipart/form-data">
           <label>Upload .wav or .mp3
             <div class="upload-row">
@@ -141,21 +173,83 @@
           </label>
         </form>
 
-        <ul class="audio-list" style="margin-top:.8rem;">
+        {% if audio_files %}
+        <div class="audio-toolbar" style="margin-top:.8rem;">
+          <input type="search" id="audio-search" placeholder="Search files…" oninput="filterAudio(this.value)">
+        </div>
+        {% endif %}
+
+        <ul class="audio-list" id="audio-list" style="margin-top:.4rem;">
           {% for f in audio_files %}
-            <li>
-              <span class="filename">{{ f }}</span>
-              <form method="post" action="{{ url_for('delete_audio', filename=f) }}">
-                <button type="submit" class="danger">Delete</button>
+            <li data-name="{{ f.name }}">
+              <!-- Favorite toggle -->
+              <form class="fav-form" method="post" action="{{ url_for('favorite_audio', filename=f.name) }}">
+                <button type="submit" class="fav-btn {{ 'is-fav' if f.favorite else '' }}"
+                        title="{{ 'Unfavorite' if f.favorite else 'Favorite' }}">★</button>
               </form>
+
+              <!-- Filename + inline rename -->
+              <div class="filename-cell">
+                <span class="filename" id="fn-{{ loop.index }}">{{ f.name }}</span>
+                <button type="button" class="icon" title="Rename"
+                        onclick="startRename({{ loop.index }}, '{{ f.name }}')">✏️</button>
+                <form class="rename-form" id="rf-{{ loop.index }}" method="post"
+                      action="{{ url_for('rename_audio', filename=f.name) }}">
+                  <input class="rename-input" type="text" name="new_name" id="ri-{{ loop.index }}"
+                         value="{{ f.name }}" required>
+                  <button class="primary" type="submit" style="padding:.3rem .6rem;font-size:.85rem;">OK</button>
+                  <button type="button" class="rename-cancel" onclick="cancelRename({{ loop.index }})">✕</button>
+                </form>
+              </div>
+
+              <!-- Delete -->
+              <div class="audio-actions">
+                <form method="post" action="{{ url_for('delete_audio', filename=f.name) }}">
+                  <button type="submit" class="danger" style="padding:.3rem .6rem;font-size:.85rem;">Delete</button>
+                </form>
+              </div>
             </li>
           {% else %}
-            <li style="opacity:.5;">No uploaded audio files yet.</li>
+            <li style="opacity:.5;grid-column:1/-1;">No uploaded audio files yet.</li>
           {% endfor %}
         </ul>
       </div>
     </div>
 
   </div>
+
+<script>
+function filterAudio(q) {
+  q = q.toLowerCase().trim();
+  document.querySelectorAll('#audio-list li[data-name]').forEach(li => {
+    const match = !q || li.dataset.name.toLowerCase().includes(q);
+    li.toggleAttribute('data-hidden', !match);
+  });
+}
+
+function startRename(idx, current) {
+  document.getElementById('fn-' + idx).style.display = 'none';
+  const rf = document.getElementById('rf-' + idx);
+  rf.classList.add('active');
+  const ri = document.getElementById('ri-' + idx);
+  ri.value = current;
+  ri.focus();
+  ri.select();
+}
+
+function cancelRename(idx) {
+  document.getElementById('fn-' + idx).style.display = '';
+  document.getElementById('rf-' + idx).classList.remove('active');
+}
+
+// Esc key cancels any open rename
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  document.querySelectorAll('.rename-form.active').forEach(form => {
+    const idx = form.id.replace('rf-', '');
+    cancelRename(idx);
+  });
+});
+</script>
 </body>
 </html>
