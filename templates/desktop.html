@@ -54,7 +54,7 @@ html[data-tod="night"] {
 /* ── Reset ── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { font-family: var(--font-ui); color: var(--ink); font-size: 16px; }
-body { min-height: 100dvh; }
+body { height: 100dvh; overflow: hidden; }
 
 /* ── Backdrop ── */
 body::before {
@@ -80,7 +80,10 @@ body::before {
 .page {
   max-width: 1040px;
   margin: 0 auto;
-  padding: 0 1.5rem 4rem;
+  padding: 0 1.5rem;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
 }
 
 /* ── Hero ── */
@@ -149,6 +152,17 @@ button.silence:focus-visible { outline: 2px solid #c44; outline-offset: 3px; }
 /* ── Layout ── */
 .layout {
   display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; align-items: start;
+  flex: 1; min-height: 0;
+}
+.layout > div {
+  overflow-y: auto; min-height: 0; padding-bottom: 2rem;
+  scrollbar-width: thin;
+  scrollbar-color: var(--ink-dim) transparent;
+}
+.layout > div::-webkit-scrollbar { width: 6px; }
+.layout > div::-webkit-scrollbar-track { background: transparent; }
+.layout > div::-webkit-scrollbar-thumb {
+  background: var(--ink-dim); border-radius: 99px;
 }
 @media (max-width: 660px) { .layout { grid-template-columns: 1fr; } }
 
@@ -173,7 +187,7 @@ button.silence:focus-visible { outline: 2px solid #c44; outline-offset: 3px; }
   width: 1.6rem; height: 1.6rem; border-radius: 50%;
   background: var(--accent); color: var(--accent-fg);
   display: flex; align-items: center; justify-content: center;
-  font-size: 1.1rem; line-height: 1; flex-shrink: 0; font-style: normal;
+  flex-shrink: 0;
   transition: transform var(--dur-m) var(--ease);
 }
 .add-alarm-toggle[aria-expanded="true"] .add-icon { transform: rotate(45deg); }
@@ -517,7 +531,11 @@ ul.audio-list li[data-hidden] { display: none; }
       <div class="glass add-alarm-card">
         <button type="button" class="add-alarm-toggle" id="add-alarm-btn"
                 onclick="toggleAddAlarm()" aria-expanded="false">
-          <span class="add-icon" aria-hidden="true">+</span>
+          <span class="add-icon" aria-hidden="true">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+          </span>
           New Alarm
         </button>
         <div id="add-alarm-form" hidden>
