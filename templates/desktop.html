@@ -342,12 +342,27 @@ button.icon:hover { opacity: 1; background: transparent; box-shadow: none; trans
 .panel-footer { display: flex; align-items: center; justify-content: space-between; gap: .45rem; margin-top: .7rem; }
 .footer-actions { display: flex; gap: .45rem; }
 
+/* ── Audio tabs ── */
+.tab-bar {
+  display: flex; gap: .2rem; margin-bottom: .75rem;
+  border-bottom: 1px solid var(--border); padding-bottom: .4rem;
+}
+.tab {
+  padding: .28rem .72rem; font-size: .82rem; font-weight: 600;
+  border: none; background: transparent; color: var(--ink-dim);
+  border-radius: 8px; cursor: pointer; font-family: var(--font-ui);
+  min-height: unset; box-shadow: none;
+  transition: background var(--dur-f) var(--ease), color var(--dur-f) var(--ease);
+}
+.tab[aria-selected="true"] { background: var(--accent-dim); color: var(--accent); }
+@media (hover: hover) and (pointer: fine) {
+  .tab:not([aria-selected="true"]):hover { background: var(--surface-hi); color: var(--ink); transform: none; box-shadow: none; }
+}
+.tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
 /* ── Audio library ── */
 .audio-panel { padding: 1.15rem 1.25rem; }
 .audio-panel h2 { font-size: .95rem; font-weight: 700; margin-bottom: .9rem; }
-.upload-form { border-bottom: 1px solid var(--border); padding-bottom: .85rem; margin-bottom: .75rem; }
-.upload-form label.field { margin-bottom: .4rem; }
-.upload-row { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
 input[type=file] { font-size: .85rem; flex: 1; color: var(--ink); font-family: var(--font-ui); cursor: pointer; }
 .audio-toolbar { margin-bottom: .55rem; }
 input[type=search] {
@@ -619,54 +634,63 @@ ul.audio-list li[data-hidden] { display: none; }
     <div>
       <p class="section-head">Audio Library</p>
       <div class="glass audio-panel">
-        <form class="upload-form" method="post" action="{{ url_for('upload_audio') }}" enctype="multipart/form-data">
-          <label class="field">Upload .wav or .mp3</label>
-          <div class="upload-row">
-            <input type="file" name="audio" accept=".wav,.mp3" required>
-            <button class="primary" type="submit">Upload</button>
-          </div>
-        </form>
-
-        {% if audio_files %}
-        <div class="audio-toolbar">
-          <input type="search" id="audio-search" placeholder="Search files…" oninput="filterAudio(this.value)">
+        <div class="tab-bar" role="tablist">
+          <button type="button" role="tab" class="tab" aria-selected="true"
+                  onclick="switchAudioTab(this,'audio-tab-library')">Library</button>
+          <button type="button" role="tab" class="tab" aria-selected="false"
+                  onclick="switchAudioTab(this,'audio-tab-upload')">Upload</button>
         </div>
-        {% endif %}
 
-        <ul class="audio-list" id="audio-list">
-          {% for f in audio_files %}
-            <li data-name="{{ f.name }}">
-              <form class="fav-form" method="post" action="{{ url_for('favorite_audio', filename=f.name) }}">
-                <button type="submit" class="fav-btn {{ 'is-fav' if f.favorite else '' }}"
-                        title="{{ 'Unfavorite' if f.favorite else 'Favorite' }}">★</button>
-              </form>
-              <div class="filename-cell">
-                <span class="filename" id="fn-{{ loop.index }}">{{ f.name }}</span>
-                <button type="button" class="icon" title="Rename"
-                        onclick="startRename({{ loop.index }}, '{{ f.stem }}')">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none"
-                       stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
-                  </svg>
-                </button>
-                <form class="rename-form" id="rf-{{ loop.index }}" method="post"
-                      action="{{ url_for('rename_audio', filename=f.name) }}">
-                  <input class="rename-input" type="text" name="new_name" id="ri-{{ loop.index }}" required>
-                  <span class="ext-badge">{{ f.ext }}</span>
-                  <button class="primary" type="submit" style="padding:.3rem .6rem;font-size:.82rem;">OK</button>
-                  <button type="button" class="rename-cancel" onclick="cancelRename({{ loop.index }})">✕</button>
+        <div id="audio-tab-library" class="tab-panel">
+          {% if audio_files %}
+          <div class="audio-toolbar">
+            <input type="search" id="audio-search" placeholder="Search files…" oninput="filterAudio(this.value)">
+          </div>
+          {% endif %}
+          <ul class="audio-list" id="audio-list">
+            {% for f in audio_files %}
+              <li data-name="{{ f.name }}">
+                <form class="fav-form" method="post" action="{{ url_for('favorite_audio', filename=f.name) }}">
+                  <button type="submit" class="fav-btn {{ 'is-fav' if f.favorite else '' }}"
+                          title="{{ 'Unfavorite' if f.favorite else 'Favorite' }}">★</button>
                 </form>
-              </div>
-              <div class="audio-actions">
-                <form method="post" action="{{ url_for('delete_audio', filename=f.name) }}">
-                  <button type="submit" class="danger" style="padding:.3rem .6rem;font-size:.82rem;">Delete</button>
-                </form>
-              </div>
-            </li>
-          {% else %}
-            <li style="opacity:.45; grid-column:1/-1; font-size:.88rem; padding:.4rem 0;">No uploaded audio files yet.</li>
-          {% endfor %}
-        </ul>
+                <div class="filename-cell">
+                  <span class="filename" id="fn-{{ loop.index }}">{{ f.name }}</span>
+                  <button type="button" class="icon" title="Rename"
+                          onclick="startRename({{ loop.index }}, '{{ f.stem }}')">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none"
+                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+                    </svg>
+                  </button>
+                  <form class="rename-form" id="rf-{{ loop.index }}" method="post"
+                        action="{{ url_for('rename_audio', filename=f.name) }}">
+                    <input class="rename-input" type="text" name="new_name" id="ri-{{ loop.index }}" required>
+                    <span class="ext-badge">{{ f.ext }}</span>
+                    <button class="primary" type="submit" style="padding:.3rem .6rem;font-size:.82rem;">OK</button>
+                    <button type="button" class="rename-cancel" onclick="cancelRename({{ loop.index }})">✕</button>
+                  </form>
+                </div>
+                <div class="audio-actions">
+                  <form method="post" action="{{ url_for('delete_audio', filename=f.name) }}">
+                    <button type="submit" class="danger" style="padding:.3rem .6rem;font-size:.82rem;">Delete</button>
+                  </form>
+                </div>
+              </li>
+            {% else %}
+              <li style="opacity:.45; grid-column:1/-1; font-size:.88rem; padding:.4rem 0;">No uploaded audio files yet.</li>
+            {% endfor %}
+          </ul>
+        </div>
+
+        <div id="audio-tab-upload" class="tab-panel" hidden>
+          <form method="post" action="{{ url_for('upload_audio') }}" enctype="multipart/form-data">
+            <label class="field">File
+              <input type="file" name="audio" accept=".wav,.mp3" required>
+            </label>
+            <button class="primary" type="submit">Upload</button>
+          </form>
+        </div>
       </div>
     </div>
 
@@ -729,6 +753,15 @@ document.addEventListener('keydown', e => {
     cancelRename(form.id.replace('rf-', ''));
   });
 });
+
+// ── Audio library tabs ──
+function switchAudioTab(btn, panelId) {
+  const panel = btn.closest('.audio-panel');
+  panel.querySelectorAll('.tab-panel').forEach(p => p.hidden = true);
+  panel.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', 'false'));
+  document.getElementById(panelId).hidden = false;
+  btn.setAttribute('aria-selected', 'true');
+}
 
 // ── Add-alarm toggle ──
 function toggleAddAlarm() {
