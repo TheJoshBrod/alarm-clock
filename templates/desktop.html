@@ -81,6 +81,14 @@
   .rename-input { flex: 1; padding: .3rem .5rem; font-size: .85rem; font-family: monospace;
                   border: 1px solid #48a; border-radius: 5px; background: transparent; color: inherit; }
   .rename-cancel { font-size: .8rem; padding: .25rem .45rem; }
+  .ext-badge { font-size: .8rem; opacity: .55; font-family: monospace; white-space: nowrap; }
+
+  /* Toast */
+  #toast { position: fixed; bottom: 1.4rem; left: 50%; transform: translateX(-50%) translateY(120%);
+           background: #222; color: #fff; padding: .55rem 1.1rem; border-radius: 8px;
+           font-size: .9rem; white-space: nowrap; box-shadow: 0 4px 16px #0005;
+           transition: transform .2s ease, opacity .2s ease; opacity: 0; pointer-events: none; z-index: 999; }
+  #toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
 
   .audio-actions { display: flex; gap: .25rem; align-items: center; }
 
@@ -192,11 +200,11 @@
               <div class="filename-cell">
                 <span class="filename" id="fn-{{ loop.index }}">{{ f.name }}</span>
                 <button type="button" class="icon" title="Rename"
-                        onclick="startRename({{ loop.index }}, '{{ f.name }}')">✏️</button>
+                        onclick="startRename({{ loop.index }}, '{{ f.stem }}')">✏️</button>
                 <form class="rename-form" id="rf-{{ loop.index }}" method="post"
                       action="{{ url_for('rename_audio', filename=f.name) }}">
-                  <input class="rename-input" type="text" name="new_name" id="ri-{{ loop.index }}"
-                         value="{{ f.name }}" required>
+                  <input class="rename-input" type="text" name="new_name" id="ri-{{ loop.index }}" required>
+                  <span class="ext-badge">{{ f.ext }}</span>
                   <button class="primary" type="submit" style="padding:.3rem .6rem;font-size:.85rem;">OK</button>
                   <button type="button" class="rename-cancel" onclick="cancelRename({{ loop.index }})">✕</button>
                 </form>
@@ -219,6 +227,17 @@
   </div>
 
 <script>
+// Toast
+let _toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+// Audio search
 function filterAudio(q) {
   q = q.toLowerCase().trim();
   document.querySelectorAll('#audio-list li[data-name]').forEach(li => {
@@ -227,12 +246,13 @@ function filterAudio(q) {
   });
 }
 
-function startRename(idx, current) {
+// Rename
+function startRename(idx, stem) {
   document.getElementById('fn-' + idx).style.display = 'none';
   const rf = document.getElementById('rf-' + idx);
   rf.classList.add('active');
   const ri = document.getElementById('ri-' + idx);
-  ri.value = current;
+  ri.value = stem;
   ri.focus();
   ri.select();
 }
@@ -242,14 +262,28 @@ function cancelRename(idx) {
   document.getElementById('rf-' + idx).classList.remove('active');
 }
 
-// Esc key cancels any open rename
+document.querySelectorAll('.rename-form').forEach(form => {
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    const idx = form.id.replace('rf-', '');
+    const resp = await fetch(form.action, {method: 'POST', body: new FormData(form)});
+    if (resp.ok) {
+      location.reload();
+    } else {
+      const data = await resp.json().catch(() => ({}));
+      showToast(data.error || 'Rename failed');
+      cancelRename(idx);
+    }
+  });
+});
+
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
   document.querySelectorAll('.rename-form.active').forEach(form => {
-    const idx = form.id.replace('rf-', '');
-    cancelRename(idx);
+    cancelRename(form.id.replace('rf-', ''));
   });
 });
 </script>
+<div id="toast"></div>
 </body>
 </html>

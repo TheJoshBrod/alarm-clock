@@ -203,7 +203,11 @@ def _library_audio_files():
         p.name for p in AUDIO_DIR.iterdir()
         if p.is_file() and not _TONE_RE.match(p.name) and p.suffix.lower() in (".wav", ".mp3")
     )
-    files = [{"name": n, "favorite": bool(_audio_meta.get(n, {}).get("favorite"))} for n in names]
+    files = [
+        {"name": n, "stem": Path(n).stem, "ext": Path(n).suffix,
+         "favorite": bool(_audio_meta.get(n, {}).get("favorite"))}
+        for n in names
+    ]
     files.sort(key=lambda f: (not f["favorite"], f["name"].lower()))
     return files
 
@@ -259,19 +263,16 @@ def upload_audio():
 
 @app.route("/audio/<filename>/rename", methods=["POST"])
 def rename_audio(filename):
-    new_name = request.form.get("new_name", "").strip()
-    if not new_name:
-        return "new_name is required", 400
-    ext = Path(new_name).suffix.lower()
-    if ext not in (".wav", ".mp3"):
-        return "New name must end in .wav or .mp3", 400
-    new_name = secure_filename(new_name).lower()
+    new_stem = request.form.get("new_name", "").strip()
+    if not new_stem:
+        return jsonify({"error": "Name cannot be empty"}), 400
     src = AUDIO_DIR / secure_filename(filename)
-    dst = AUDIO_DIR / new_name
     if not src.exists() or _TONE_RE.match(src.name):
-        return "File not found", 404
-    if dst.exists():
-        return "A file with that name already exists", 409
+        return jsonify({"error": "File not found"}), 404
+    new_name = secure_filename(new_stem + src.suffix).lower()
+    dst = AUDIO_DIR / new_name
+    if dst.exists() and dst != src:
+        return jsonify({"error": f'A file named "{new_name}" already exists'}), 409
     src.rename(dst)
     with _state_lock:
         for a in _alarms:
@@ -281,7 +282,7 @@ def rename_audio(filename):
     if filename in _audio_meta:
         _audio_meta[new_name] = _audio_meta.pop(filename)
         save_audio_meta()
-    return redirect(url_for("index"))
+    return jsonify({"ok": True})
 
 
 @app.route("/audio/<filename>/favorite", methods=["POST"])
