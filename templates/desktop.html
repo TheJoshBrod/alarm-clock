@@ -189,6 +189,7 @@ button.silence:active { transform: scale(.97); }
 .overview-value { font-weight: 600; font-size: .8rem; }
 
 /* FAB */
+.fab-wrap { position: relative; align-self: flex-start; margin-top: auto; }
 .fab {
   width: 2.5rem; height: 2.5rem; border-radius: 50%;
   background: var(--accent); color: var(--accent-fg);
@@ -196,11 +197,31 @@ button.silence:active { transform: scale(.97); }
   display: flex; align-items: center; justify-content: center; flex-shrink: 0;
   box-shadow: 0 6px 20px -6px rgba(0,0,0,.4);
   transition: background var(--dur-f) var(--ease), transform var(--dur-f) var(--ease);
-  margin-top: auto; align-self: flex-start;
 }
 .fab:hover { filter: brightness(1.1); transform: scale(1.07); }
 .fab:active { transform: scale(.94) !important; }
 .fab:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.fab-icon { transition: transform .2s var(--ease); }
+.fab-wrap.open .fab-icon { transform: rotate(45deg); }
+.fab-menu {
+  position: absolute; bottom: calc(100% + .45rem); left: 0;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; box-shadow: 0 8px 24px -6px rgba(0,0,0,.35);
+  padding: .3rem; list-style: none; min-width: 11rem;
+  opacity: 0; transform: translateY(.4rem) scale(.96); pointer-events: none;
+  transition: opacity .15s var(--ease), transform .15s var(--ease);
+}
+.fab-wrap.open .fab-menu { opacity: 1; transform: none; pointer-events: auto; }
+.fab-menu-item {
+  display: flex; align-items: center; gap: .55rem;
+  width: 100%; padding: .5rem .75rem; border-radius: 8px;
+  background: transparent; border: none; cursor: pointer;
+  font-size: .88rem; font-family: var(--font-ui); color: var(--ink);
+  text-align: left; white-space: nowrap;
+  transition: background var(--dur-f) var(--ease);
+}
+.fab-menu-item:hover { background: var(--surface-hi); }
+.fab-menu-item svg { flex-shrink: 0; opacity: .7; }
 
 .settings-link {
   font-size: .78rem; color: var(--ink-dim); text-decoration: none;
@@ -537,11 +558,30 @@ button.icon:hover { opacity: 1; background: transparent; box-shadow: none; trans
       </div>
       {% endif %}
 
-      <button class="fab" type="button" onclick="openDetailPaneForNew()" aria-label="New alarm" title="New alarm">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
-          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-        </svg>
-      </button>
+      <div class="fab-wrap" id="fab-wrap">
+        <ul class="fab-menu" id="fab-menu" role="menu">
+          <li>
+            <button class="fab-menu-item" type="button" role="menuitem" onclick="fabNewAlarm()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              New Alarm
+            </button>
+          </li>
+          <li>
+            <button class="fab-menu-item" type="button" role="menuitem" onclick="fabUploadAudio()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              Upload Audio
+            </button>
+          </li>
+        </ul>
+        <button class="fab" type="button" id="fab-btn" aria-label="Actions" aria-haspopup="true" aria-expanded="false" aria-controls="fab-menu">
+          <svg class="fab-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+        </button>
+        <form id="fab-upload-form" method="post" action="{{ url_for('upload_audio') }}" enctype="multipart/form-data" hidden>
+          <input type="file" id="fab-audio-input" name="audio" accept=".wav,.mp3">
+        </form>
+      </div>
 
       <a class="settings-link" href="?view=mobile">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -1134,8 +1174,36 @@ function buildCustomSelect(sel) {
 }
 document.querySelectorAll('select').forEach(buildCustomSelect);
 
+// ── FAB menu ──
+(function() {
+  const wrap = document.getElementById('fab-wrap');
+  const btn  = document.getElementById('fab-btn');
+  function openFab()  { wrap.classList.add('open');    btn.setAttribute('aria-expanded','true');  }
+  function closeFab() { wrap.classList.remove('open'); btn.setAttribute('aria-expanded','false'); }
+  btn.addEventListener('click', e => { e.stopPropagation(); wrap.classList.contains('open') ? closeFab() : openFab(); });
+  document.addEventListener('pointerdown', e => { if (!wrap.contains(e.target)) closeFab(); }, true);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeFab(); });
+})();
+
+function fabNewAlarm() {
+  document.getElementById('fab-wrap').classList.remove('open');
+  document.getElementById('fab-btn').setAttribute('aria-expanded','false');
+  openDetailPaneForNew();
+}
+
+function fabUploadAudio() {
+  document.getElementById('fab-wrap').classList.remove('open');
+  document.getElementById('fab-btn').setAttribute('aria-expanded','false');
+  const inp = document.getElementById('fab-audio-input');
+  inp.click();
+}
+
+document.getElementById('fab-audio-input').addEventListener('change', function() {
+  if (this.files[0]) document.getElementById('fab-upload-form').submit();
+});
+
 // ── File Upload Enhancement ──
-document.querySelectorAll('input[type=file]').forEach(inp => {
+document.querySelectorAll('input[type=file]:not(#fab-audio-input)').forEach(inp => {
   const nameLbl = document.createElement('div');
   nameLbl.className = 'file-name-display'; nameLbl.textContent = 'No file chosen';
   const btn = document.createElement('button');
