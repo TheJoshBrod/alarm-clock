@@ -25,6 +25,7 @@ AUDIO_DIR = BASE_DIR / "audio"
 ALARMS_FILE = BASE_DIR / "alarms.json"
 AUDIO_META_FILE = BASE_DIR / "audio_meta.json"
 LOCATION_CACHE_FILE = BASE_DIR / "location_cache.json"
+WEATHER_CACHE_FILE = BASE_DIR / "weather_cache.json"
 AUDIO_DIR.mkdir(exist_ok=True)
 
 # Deployment-specific knobs — override via environment variables.
@@ -146,6 +147,57 @@ def compute_sun_times(loc: dict | None, for_date: date | None = None) -> tuple[s
     except Exception as e:
         print(f"Sun time calculation failed: {e}")
         return None, None
+
+
+def fetch_weather(loc: dict | None) -> str | None:
+    """Fetch daily weather forecast using Open-Meteo API, caching results for 10 minutes."""
+    if loc is None:
+        return None
+    
+    now_ts = time.time()
+    if WEATHER_CACHE_FILE.exists():
+        try:
+            with WEATHER_CACHE_FILE.open() as f:
+                data = json.load(f)
+                if now_ts - data.get("timestamp", 0) < 600:
+                    return data.get("forecast")
+        except Exception:
+            pass
+            
+    try:
+        url = f"https://api.open-meteo.com/v1/forecast?latitude={loc['lat']}&longitude={loc['lon']}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=1"
+        req = urllib.request.Request(url, headers={'User-Agent': 'AlarmClockApp/1.0'})
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            data = json.loads(resp.read())
+            daily = data.get("daily", {})
+            tmax = daily.get("temperature_2m_max", [None])[0]
+            tmin = daily.get("temperature_2m_min", [None])[0]
+            code = daily.get("weathercode", [0])[0]
+            
+            # Basic WMO code mapping
+            if code == 0: desc = "Clear"
+            elif code in (1, 2, 3): desc = "Partly Cloudy"
+            elif code in (45, 48): desc = "Fog"
+            elif code in (51, 53, 55, 56, 57): desc = "Drizzle"
+            elif code in (61, 63, 65, 66, 67): desc = "Rain"
+            elif code in (71, 73, 75, 77, 85, 86): desc = "Snow"
+            elif code in (80, 81, 82): desc = "Showers"
+            elif code in (95, 96, 99): desc = "Thunderstorm"
+            else: desc = "Variable"
+            
+            if tmax is not None and tmin is not None:
+                forecast = f"{desc}, {round(tmax)}° / {round(tmin)}°"
+            else:
+                forecast = desc
+                
+            tmp = WEATHER_CACHE_FILE.with_suffix(".tmp")
+            with tmp.open("w") as f:
+                json.dump({"timestamp": now_ts, "forecast": forecast}, f)
+            tmp.replace(WEATHER_CACHE_FILE)
+            return forecast
+    except Exception as e:
+        print(f"Weather fetch failed: {e}")
+        return None
 
 
 _location: dict | None = None
@@ -364,6 +416,7 @@ def index():
         tod = "night"
 
     sunrise_hhmm, sunset_hhmm = compute_sun_times(_location)
+    weather_forecast = fetch_weather(_location)
 
     ctx = dict(
         alarms=alarms,
@@ -378,6 +431,7 @@ def index():
         current_hhmm=now.strftime("%H:%M"),
         sunrise_hhmm=sunrise_hhmm,
         sunset_hhmm=sunset_hhmm,
+        weather_forecast=weather_forecast,
     )
 
     if use_mobile:

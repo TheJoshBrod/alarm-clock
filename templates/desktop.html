@@ -558,7 +558,7 @@ button.icon:hover { opacity: 1; background: transparent; box-shadow: none; trans
         <div class="next-alarm-pips" id="next-alarm-pips"></div>
       </div>
 
-      {% if sunrise_hhmm or sunset_hhmm %}
+      {% if sunrise_hhmm or sunset_hhmm or weather_forecast %}
       <div class="glass today-overview-card">
         <p class="section-head">Today's Overview</p>
         {% if sunrise_hhmm %}
@@ -573,6 +573,13 @@ button.icon:hover { opacity: 1; background: transparent; box-shadow: none; trans
           <span class="overview-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 18a5 5 0 0 0-10 0"/><line x1="12" y1="2" x2="12" y2="9"/><line x1="4.22" y1="10.22" x2="5.64" y2="11.64"/><line x1="2" y1="18" x2="4" y2="18"/><line x1="20" y1="18" x2="22" y2="18"/><line x1="19.78" y1="10.22" x2="18.36" y2="11.64"/><polyline points="8 14 12 10 16 14"/></svg></span>
           <span class="overview-label">Sunset</span>
           <span class="overview-value">{{ sunset_hhmm }}</span>
+        </div>
+        {% endif %}
+        {% if weather_forecast %}
+        <div class="overview-row">
+          <span class="overview-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg></span>
+          <span class="overview-label">Forecast</span>
+          <span class="overview-value">{{ weather_forecast }}</span>
         </div>
         {% endif %}
       </div>
