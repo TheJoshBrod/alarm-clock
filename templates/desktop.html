@@ -249,7 +249,7 @@ button.silence:active { transform: scale(.97); }
   display: flex; align-items: center; gap: .65rem;
   padding: .8rem 1rem .8rem 1.1rem;
   margin-bottom: .5rem; cursor: pointer; user-select: none;
-  border: 2px solid transparent; overflow: clip;
+  border: 2px solid transparent; overflow: hidden; min-width: 0;
   transition: background var(--dur-f) var(--ease),
               border-color var(--dur-m) var(--ease),
               box-shadow var(--dur-m) var(--ease);
@@ -876,6 +876,15 @@ function syncCustomSelect(sel) {
 
 // ── Select alarm for editing ──
 function selectAlarm(id) {
+  if (state.selectedAlarmId === id) {
+    state.selectedAlarmId = null;
+    document.querySelectorAll('.alarm-card').forEach(c => c.classList.remove('selected'));
+    document.getElementById('detail-empty').hidden   = false;
+    document.getElementById('detail-content').hidden = true;
+    updateSoundPreview(null);
+    return;
+  }
+
   const alarm = getAlarmsData().find(a => a.id === id);
   if (!alarm) return;
 
