@@ -165,7 +165,7 @@ def fetch_weather(loc: dict | None) -> str | None:
             pass
             
     try:
-        url = f"https://api.open-meteo.com/v1/forecast?latitude={loc['lat']}&longitude={loc['lon']}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=1"
+        url = f"https://api.open-meteo.com/v1/forecast?latitude={loc['lat']}&longitude={loc['lon']}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=1&temperature_unit=fahrenheit"
         req = urllib.request.Request(url, headers={'User-Agent': 'AlarmClockApp/1.0'})
         with urllib.request.urlopen(req, timeout=5) as resp:
             data = json.loads(resp.read())
@@ -186,7 +186,7 @@ def fetch_weather(loc: dict | None) -> str | None:
             else: desc = "Variable"
             
             if tmax is not None and tmin is not None:
-                forecast = f"{desc}, {round(tmax)}° / {round(tmin)}°"
+                forecast = f"{desc}, {round(tmax)}°F / {round(tmin)}°F"
             else:
                 forecast = desc
                 
