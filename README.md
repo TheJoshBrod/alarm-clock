@@ -1,22 +1,41 @@
-# AIY Alarm Clock
+## AIY Alarm Clock
 
-Local-network alarm clock for the Google AIY Voice Kit on a Raspberry Pi 3B.
-Set alarms from a phone/laptop on the same network; alarms play audio downloaded
-from YouTube; the AIY button on top of the device is the only way to silence a
-ringing alarm.
+A Raspberry Pi alarm clock designed with a specific rule: **the only way to silence a ringing alarm is by physically pressing the button on the device.** You cannot stop it from your phone.
 
-## Setup on the Pi
+The goal is to force you out of bed. Since you have to walk to the device to press the button, you are less likely to stay under the covers and browse your phone. You use your phone to set alarms, but not to dismiss them.
+
+## Hardware
+
+* Raspberry Pi 3B (or similar)
+* [Google AIY Voice Kit v2](https://aiyprojects.withgoogle.com/voice): This provides the physical button and LED on top of the box.
+
+## How it works
+
+* A Flask web server runs on the Pi. It provides a **mobile view** for your phone and a **desktop view** for a full dashboard.
+* The server detects your device type automatically using the User-Agent. You can also force a view by adding `?view=mobile` or `?view=desktop` to the URL.
+* A background scheduler checks the time every second. It triggers when the current time matches an enabled alarm and the day of the week is correct.
+* When an alarm goes off, the AIY LED blinks and audio loops using `aplay` for WAV files or `mpg123` for MP3s.
+* **The web UI lacks a silence button.** You must walk to the Pi and press the AIY button to stop the sound.
+* All settings are saved in `alarms.json` so they persist through reboots.
+
+## Features
+
+* **Custom Audio:** Upload `.wav` or `.mp3` files or use a default generated tone.
+* **Fade-in Volume:** Increase the volume gradually over a set time (0 to 300 seconds).
+* **Individual Volume:** Set a unique target volume for every alarm.
+* **Day-of-Week Repeat:** Choose specific days for the alarm to trigger. Leave all days unchecked for a daily alarm.
+* **Sunrise/Sunset Display:** The sidebar shows local sunrise and sunset times based on your IP location.
+* **Dynamic Themes:** The UI colors change automatically based on the time of day (dawn, day, dusk, and night).
+* **Audio Library:** A dedicated section to manage, favorite, rename, or delete sounds.
+
+## Setup
 
 ```bash
-sudo apt install -y ffmpeg alsa-utils
+sudo apt install -y alsa-utils mpg123
 pip3 install -r requirements.txt
 ```
 
-`yt-dlp` (installed by `requirements.txt`) needs `ffmpeg` to extract audio.
-`aplay` ships with `alsa-utils`.
-
-The AIY libraries (`aiy.board`, `aiy.voice.audio`) are already on the kit's SD
-card image.
+Note: The AIY libraries (`aiy.board`, `aiy.voice.audio`) are already included on the official Voice Kit SD card image.
 
 ## Run
 
@@ -24,24 +43,17 @@ card image.
 python3 alarm_clock.py
 ```
 
-It prints the URL on startup, e.g. `http://192.168.1.76:8080`. Open that on any
-device on the same network.
+The terminal will show your local network URL on startup. You can usually access it via the Pi's hostname:
 
-## How it works
+`http://raspberrypi.local:8080`
 
-- Adding an alarm downloads the YouTube audio to `audio/<id>.wav` immediately,
-  so triggering is fast and works offline.
-- A scheduler thread checks every second; when local time matches an enabled
-  alarm's `HH:MM` and today is in its day-of-week list, it triggers.
-- During an alarm the LED blinks and the wav loops via `aplay` until the AIY
-  button is pressed. The web UI has no stop button by design.
-- Alarms persist in `alarms.json`.
+If you have changed your hostname, replace `raspberrypi` with your chosen name. Open this link on your phone or computer and bookmark it.
 
-## Run on boot (optional)
+## Run on boot
 
-Create `/etc/systemd/system/alarm-clock.service`:
+Create a service file at `/etc/systemd/system/alarm-clock.service`:
 
-```
+```ini
 [Unit]
 Description=AIY Alarm Clock
 After=network-online.target sound.target
@@ -58,5 +70,29 @@ Restart=on-failure
 WantedBy=multi-user.target
 ```
 
-Then `sudo systemctl enable --now alarm-clock`.
-# alarm-clock
+Enable the service:
+
+```bash
+sudo systemctl enable --now alarm-clock
+```
+
+## Configuration
+
+Modify default settings using environment variables:
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `ALARM_PORT` | `8080` | Web server port |
+| `ALARM_ALSA_MIXER` | `Master` | ALSA mixer control name |
+| `ALARM_TONE_FREQ` | `880` | Default tone frequency (Hz) |
+| `ALARM_TONE_DURATION` | `1.0` | Default tone clip length (sec) |
+| `ALARM_FADE_START_PCT` | `10` | Starting volume % for fade-in ramps |
+
+## Project layout
+
+* `alarm_clock.py`: Flask app, scheduler, and AIY hardware integration.
+* `requirements.txt`: Python dependencies.
+* `alarms.json`: Saved alarm data.
+* `audio/`: Folder for uploaded sounds and generated tones.
+* `templates/mobile.html`: Interface for phone users.
+* `templates/desktop.html`: Interface for desktop users.
