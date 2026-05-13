@@ -184,7 +184,7 @@ button.silence:active { transform: scale(.97); }
   padding: .28rem 0; border-bottom: 1px solid var(--border); font-size: .82rem;
 }
 .overview-row:last-child { border-bottom: none; }
-.overview-icon { font-size: .95rem; flex-shrink: 0; opacity: .65; width: 1.3rem; text-align: center; }
+.overview-icon { flex-shrink: 0; opacity: .65; width: 1.3rem; display: flex; align-items: center; justify-content: center; }
 .overview-label { color: var(--ink-dim); flex: 1; }
 .overview-value { font-weight: 600; font-size: .8rem; }
 
@@ -523,11 +523,7 @@ button.icon:hover { opacity: 1; background: transparent; box-shadow: none; trans
       <div class="glass clock-card">
         <div class="hero-clock" id="hero-time">{{ '%02d:%02d' | format(current_hour, current_minute) }}</div>
         <div class="hero-date" id="hero-date">{{ weekday_name }}, {{ date_str }}</div>
-        {% if active %}
-          <span class="hero-pill ringing">● Ringing</span>
-        {% else %}
-          <span class="hero-pill">{{ alarms|length }} alarm{{ 's' if alarms|length != 1 else '' }}</span>
-        {% endif %}
+        <span class="hero-pill ringing" style="{{ '' if active else 'visibility:hidden' }}"><svg width="6" height="6" viewBox="0 0 6 6" fill="currentColor" aria-hidden="true"><circle cx="3" cy="3" r="3"/></svg> Ringing</span>
       </div>
 
       <div class="glass next-alarm-card">
@@ -543,14 +539,14 @@ button.icon:hover { opacity: 1; background: transparent; box-shadow: none; trans
         <p class="section-head">Today's Overview</p>
         {% if sunrise_hhmm %}
         <div class="overview-row">
-          <span class="overview-icon">🌅</span>
+          <span class="overview-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 18a5 5 0 0 0-10 0"/><line x1="12" y1="2" x2="12" y2="9"/><line x1="4.22" y1="10.22" x2="5.64" y2="11.64"/><line x1="2" y1="18" x2="4" y2="18"/><line x1="20" y1="18" x2="22" y2="18"/><line x1="19.78" y1="10.22" x2="18.36" y2="11.64"/><polyline points="16 5 12 9 8 5"/></svg></span>
           <span class="overview-label">Sunrise</span>
           <span class="overview-value">{{ sunrise_hhmm }}</span>
         </div>
         {% endif %}
         {% if sunset_hhmm %}
         <div class="overview-row">
-          <span class="overview-icon">🌇</span>
+          <span class="overview-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 18a5 5 0 0 0-10 0"/><line x1="12" y1="2" x2="12" y2="9"/><line x1="4.22" y1="10.22" x2="5.64" y2="11.64"/><line x1="2" y1="18" x2="4" y2="18"/><line x1="20" y1="18" x2="22" y2="18"/><line x1="19.78" y1="10.22" x2="18.36" y2="11.64"/><polyline points="8 14 12 10 16 14"/></svg></span>
           <span class="overview-label">Sunset</span>
           <span class="overview-value">{{ sunset_hhmm }}</span>
         </div>
