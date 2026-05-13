@@ -120,7 +120,7 @@ button.silence:active { transform: scale(.97); }
 
 /* ── Column scroll ── */
 .col-scroll {
-  flex: 1; min-height: 0; overflow-y: auto; padding-bottom: 1.5rem;
+  flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding-bottom: 1.5rem;
   scrollbar-width: thin; scrollbar-color: var(--ink-dim) transparent;
 }
 .col-scroll::-webkit-scrollbar { width: 5px; }
@@ -246,7 +246,8 @@ button.silence:active { transform: scale(.97); }
   }
 }
 .alarm-card {
-  display: flex; align-items: center; gap: .65rem;
+  display: grid; grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center; column-gap: .65rem;
   padding: .8rem 1rem .8rem 1.1rem;
   margin-bottom: .5rem; cursor: pointer; user-select: none;
   border: 2px solid transparent; overflow: hidden; min-width: 0;
