@@ -190,17 +190,27 @@ button.silence:active { transform: scale(.97); }
 .next-alarm-countdown { font-size: .78rem; color: var(--ink-dim); }
 .next-alarm-pips { display: flex; gap: .18rem; margin-top: .35rem; }
 
-/* Today overview */
-.today-overview-card { padding: .9rem 1.15rem; }
-.today-overview-card .section-head { padding-bottom: .4rem; }
-.overview-row {
-  display: flex; align-items: center; gap: .5rem;
-  padding: .28rem 0; border-bottom: 1px solid var(--border); font-size: .82rem;
+/* Today overview / Daily Briefing */
+.today-overview-card { padding: 1.1rem 1.15rem; position: relative; }
+.today-overview-card .section-head { padding-bottom: .8rem; }
+.briefing-layout { display: flex; gap: 1rem; align-items: stretch; }
+.briefing-left { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; }
+.weather-icon-lg { margin-bottom: .4rem; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1)); }
+.weather-main {
+  font-family: var(--font-disp); font-size: 2.2rem; font-weight: 600;
+  letter-spacing: -.02em; line-height: 1; margin-bottom: .25rem;
 }
-.overview-row:last-child { border-bottom: none; }
-.overview-icon { flex-shrink: 0; opacity: .65; width: 1.3rem; display: flex; align-items: center; justify-content: center; }
-.overview-label { color: var(--ink-dim); flex: 1; }
-.overview-value { font-weight: 600; font-size: .8rem; }
+.weather-desc { font-size: .85rem; font-weight: 600; }
+.weather-hilow { font-size: .72rem; color: var(--ink-dim); margin-top: .15rem; }
+
+.briefing-divider { width: 1px; background: var(--border); margin: .2rem 0; }
+
+.briefing-right { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; }
+.sun-arc-wrap { width: 100%; aspect-ratio: 2/1; margin-bottom: .4rem; position: relative; }
+.sun-arc-svg { width: 100%; height: 100%; overflow: visible; }
+.sun-times { display: flex; justify-content: space-between; text-align: center; }
+.sun-time { font-size: .65rem; color: var(--ink-dim); line-height: 1.3; display: flex; flex-direction: column; align-items: center; gap: .2rem; }
+.briefing-settings-icon { position: absolute; bottom: .8rem; right: .8rem; opacity: .4; }
 
 /* FAB */
 .fab-wrap { position: relative; align-self: flex-start; margin-top: auto; }
@@ -560,28 +570,58 @@ button.icon:hover { opacity: 1; background: transparent; box-shadow: none; trans
 
       {% if sunrise_hhmm or sunset_hhmm or weather_forecast %}
       <div class="glass today-overview-card">
-        <p class="section-head">Today's Overview</p>
-        {% if sunrise_hhmm %}
-        <div class="overview-row">
-          <span class="overview-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 18a5 5 0 0 0-10 0"/><line x1="12" y1="2" x2="12" y2="9"/><line x1="4.22" y1="10.22" x2="5.64" y2="11.64"/><line x1="2" y1="18" x2="4" y2="18"/><line x1="20" y1="18" x2="22" y2="18"/><line x1="19.78" y1="10.22" x2="18.36" y2="11.64"/><polyline points="16 5 12 9 8 5"/></svg></span>
-          <span class="overview-label">Sunrise</span>
-          <span class="overview-value">{{ sunrise_hhmm }}</span>
+        <p class="section-head">Daily Briefing</p>
+        <div class="briefing-layout">
+          <div class="briefing-left">
+            {% if weather_forecast %}
+              <div class="weather-icon-lg">
+                {% if 'Clear' in weather_forecast.desc %}
+                  <span style="font-size: 2.8rem; line-height: 1;">☀️</span>
+                {% elif 'Cloud' in weather_forecast.desc %}
+                  <span style="font-size: 2.8rem; line-height: 1;">⛅</span>
+                {% elif 'Rain' in weather_forecast.desc or 'Shower' in weather_forecast.desc or 'Drizzle' in weather_forecast.desc %}
+                  <span style="font-size: 2.8rem; line-height: 1;">🌧️</span>
+                {% elif 'Snow' in weather_forecast.desc %}
+                  <span style="font-size: 2.8rem; line-height: 1;">❄️</span>
+                {% elif 'Thunder' in weather_forecast.desc %}
+                  <span style="font-size: 2.8rem; line-height: 1;">⛈️</span>
+                {% else %}
+                  <span style="font-size: 2.8rem; line-height: 1;">⛅</span>
+                {% endif %}
+              </div>
+              <div class="weather-main">{{ weather_forecast.temp }}&deg; F</div>
+              <div class="weather-desc">{{ weather_forecast.desc }}</div>
+              <div class="weather-hilow">High/Low: {{ weather_forecast.tmax }}&deg;/{{ weather_forecast.tmin }}&deg;</div>
+            {% endif %}
+          </div>
+          
+          <div class="briefing-divider"></div>
+          
+          <div class="briefing-right">
+            {% if sunrise_hhmm and sunset_hhmm %}
+            <div class="sun-arc-wrap">
+              <svg viewBox="0 0 100 50" class="sun-arc-svg">
+                <path d="M 5 50 A 45 45 0 0 1 95 50" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" opacity="0.4"/>
+                <!-- Sun dot roughly near 9am position -->
+                <circle cx="20" cy="23" r="4.5" fill="#e9c080" style="filter: drop-shadow(0 0 5px #e9c080); opacity: 0.9;" />
+              </svg>
+            </div>
+            <div class="sun-times">
+              <div class="sun-time">
+                <span style="color:var(--accent);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 18a5 5 0 0 0-10 0"/><line x1="12" y1="2" x2="12" y2="9"/><line x1="4.22" y1="10.22" x2="5.64" y2="11.64"/><line x1="2" y1="18" x2="4" y2="18"/><line x1="20" y1="18" x2="22" y2="18"/><line x1="19.78" y1="10.22" x2="18.36" y2="11.64"/><polyline points="16 5 12 9 8 5"/></svg></span>
+                <span>Sunrise<br><span style="color:var(--ink); font-weight: 500; font-size: .75rem;">{{ sunrise_hhmm }}</span></span>
+              </div>
+              <div class="sun-time">
+                <span style="color:var(--accent);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 18a5 5 0 0 0-10 0"/><line x1="12" y1="2" x2="12" y2="9"/><line x1="4.22" y1="10.22" x2="5.64" y2="11.64"/><line x1="2" y1="18" x2="4" y2="18"/><line x1="20" y1="18" x2="22" y2="18"/><line x1="19.78" y1="10.22" x2="18.36" y2="11.64"/><polyline points="8 14 12 10 16 14"/></svg></span>
+                <span>Sunset<br><span style="color:var(--ink); font-weight: 500; font-size: .75rem;">{{ sunset_hhmm }}</span></span>
+              </div>
+            </div>
+            {% endif %}
+          </div>
         </div>
-        {% endif %}
-        {% if sunset_hhmm %}
-        <div class="overview-row">
-          <span class="overview-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 18a5 5 0 0 0-10 0"/><line x1="12" y1="2" x2="12" y2="9"/><line x1="4.22" y1="10.22" x2="5.64" y2="11.64"/><line x1="2" y1="18" x2="4" y2="18"/><line x1="20" y1="18" x2="22" y2="18"/><line x1="19.78" y1="10.22" x2="18.36" y2="11.64"/><polyline points="8 14 12 10 16 14"/></svg></span>
-          <span class="overview-label">Sunset</span>
-          <span class="overview-value">{{ sunset_hhmm }}</span>
+        <div class="briefing-settings-icon">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         </div>
-        {% endif %}
-        {% if weather_forecast %}
-        <div class="overview-row">
-          <span class="overview-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg></span>
-          <span class="overview-label">Forecast</span>
-          <span class="overview-value">{{ weather_forecast }}</span>
-        </div>
-        {% endif %}
       </div>
       {% endif %}
 

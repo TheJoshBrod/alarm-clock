@@ -165,14 +165,16 @@ def fetch_weather(loc: dict | None) -> str | None:
             pass
             
     try:
-        url = f"https://api.open-meteo.com/v1/forecast?latitude={loc['lat']}&longitude={loc['lon']}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=1&temperature_unit=fahrenheit"
+        url = f"https://api.open-meteo.com/v1/forecast?latitude={loc['lat']}&longitude={loc['lon']}&daily=weathercode,temperature_2m_max,temperature_2m_min&current_weather=true&timezone=auto&forecast_days=1&temperature_unit=fahrenheit"
         req = urllib.request.Request(url, headers={'User-Agent': 'AlarmClockApp/1.0'})
         with urllib.request.urlopen(req, timeout=5) as resp:
             data = json.loads(resp.read())
             daily = data.get("daily", {})
+            current = data.get("current_weather", {})
             tmax = daily.get("temperature_2m_max", [None])[0]
             tmin = daily.get("temperature_2m_min", [None])[0]
             code = daily.get("weathercode", [0])[0]
+            temp = current.get("temperature", tmax)
             
             # Basic WMO code mapping
             if code == 0: desc = "Clear"
@@ -185,10 +187,12 @@ def fetch_weather(loc: dict | None) -> str | None:
             elif code in (95, 96, 99): desc = "Thunderstorm"
             else: desc = "Variable"
             
-            if tmax is not None and tmin is not None:
-                forecast = f"{desc}, {round(tmax)}°F / {round(tmin)}°F"
-            else:
-                forecast = desc
+            forecast = {
+                "desc": desc,
+                "tmax": round(tmax) if tmax is not None else None,
+                "tmin": round(tmin) if tmin is not None else None,
+                "temp": round(temp) if temp is not None else None
+            }
                 
             tmp = WEATHER_CACHE_FILE.with_suffix(".tmp")
             with tmp.open("w") as f:
