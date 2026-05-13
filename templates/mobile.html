@@ -53,6 +53,7 @@ html[data-tod="night"] {
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { font-family: var(--font-ui); color: var(--ink); font-size: 16px; }
 body { min-height: 100dvh; }
+body.sheet-open { overflow: hidden; }
 
 /* ── Backdrop ── */
 body::before {
@@ -75,7 +76,7 @@ body::before {
 }
 
 /* ── Page shell ── */
-.page { max-width: 480px; margin: 0 auto; padding: 0 1rem 3.5rem; }
+.page { max-width: 480px; margin: 0 auto; padding: 0 1rem 5.5rem; }
 
 /* ── Hero ── */
 .hero { padding: 2rem 0 1.5rem; }
@@ -125,70 +126,41 @@ button.silence:focus-visible { outline: 2px solid #c44; outline-offset: 3px; }
   color: var(--ink-dim); padding: 0 .25rem .55rem;
 }
 
-/* ── Add-alarm card ── */
-.add-alarm-card { margin-bottom: .75rem; overflow: hidden; }
-.add-alarm-toggle {
-  width: 100%; display: flex; align-items: center; gap: .65rem;
-  padding: 1rem 1.15rem; background: transparent; border: none; color: var(--ink);
-  font-family: var(--font-ui); font-size: 1rem; font-weight: 600; cursor: pointer;
-  border-radius: 18px; text-align: left; min-height: 44px;
-  transition: background var(--dur-f) var(--ease);
-}
-.add-alarm-toggle:active { background: var(--surface-hi); }
-.add-alarm-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.add-icon {
-  width: 1.65rem; height: 1.65rem; border-radius: 50%;
-  background: var(--accent); color: var(--accent-fg);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 1.15rem; line-height: 1; flex-shrink: 0; font-style: normal;
-  transition: transform var(--dur-m) var(--ease);
-}
-.add-alarm-toggle[aria-expanded="true"] .add-icon { transform: rotate(45deg); }
-.add-form-body {
-  padding: .5rem 1.15rem 1.15rem;
-  border-top: 1px solid var(--border);
-}
+/* ── Alarm feed ── */
+.alarm-feed { display: flex; flex-direction: column; }
+.feed-group { margin-bottom: .75rem; }
 
-/* ── Alarm list ── */
-.alarms { list-style: none; display: flex; flex-direction: column; gap: .6rem; }
-.alarm-item { overflow: clip; }
-.alarm-item.alarm-disabled { opacity: .45; }
-
+/* ── Alarm cards ── */
 @media (prefers-reduced-motion: no-preference) {
   @keyframes card-in {
     from { opacity: 0; transform: translateY(8px); }
     to   { opacity: 1; transform: translateY(0); }
   }
-  .alarm-item {
+  .alarm-card {
     animation: card-in var(--dur-m) var(--ease) both;
     animation-delay: calc(var(--i, 0) * 50ms);
   }
 }
-
-.alarm-summary {
-  display: flex; align-items: center; gap: .65rem;
-  padding: 1rem 1.15rem; cursor: pointer; border-radius: 18px;
-  user-select: none; min-height: 44px;
+.alarms { list-style: none; display: flex; flex-direction: column; gap: .55rem; }
+.alarm-card {
+  display: flex; align-items: center;
+  padding: .9rem 1rem .9rem 1.15rem;
+  cursor: pointer; user-select: none; overflow: clip;
   transition: background var(--dur-f) var(--ease);
 }
-.alarm-summary:active { background: var(--surface-hi); }
-.alarm-time {
+.alarm-card:active { background: var(--surface-hi); }
+.alarm-card.alarm-disabled { opacity: .45; }
+.alarm-card-body { flex: 1; min-width: 0; }
+.alarm-card-time {
   font-family: var(--font-disp); font-size: 1.75rem; font-weight: 600;
-  font-variant-numeric: tabular-nums; min-width: 4.4ch;
-  line-height: 1; letter-spacing: -.01em;
+  font-variant-numeric: tabular-nums; line-height: 1; letter-spacing: -.01em;
 }
-.alarm-info { flex: 1; min-width: 0; }
-.alarm-lbl {
-  font-weight: 600; font-size: .92rem;
+.alarm-card-label {
+  font-weight: 600; font-size: .88rem;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  display: flex; align-items: center; gap: .4rem;
+  margin-top: .1rem;
 }
-.paused-pill {
-  font-size: .65rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
-  color: var(--ink-dim); border: 1px solid var(--border); border-radius: 99px;
-  padding: .1rem .4rem; flex-shrink: 0;
-}
-.days-display { display: flex; gap: .2rem; margin-top: .35rem; }
+.days-display { display: flex; gap: .2rem; margin-top: .32rem; }
 .day-pip {
   width: 1.3rem; height: 1.3rem; border-radius: 50%;
   font-size: .65rem; font-weight: 700;
@@ -196,24 +168,79 @@ button.silence:focus-visible { outline: 2px solid #c44; outline-offset: 3px; }
   border: 1.5px solid var(--border); color: var(--ink-dim);
 }
 .day-pip.active { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
-.alarm-caret {
-  opacity: .4; font-size: 1.15rem; line-height: 1;
-  transition: transform var(--dur-f) var(--ease); flex-shrink: 0; display: inline-block;
+.alarm-card-right {
+  flex-shrink: 0; padding-left: .85rem;
+  display: flex; align-items: center; justify-content: center;
+  min-width: 3rem; min-height: 3rem;
 }
-.alarm-caret.open { transform: rotate(90deg); }
 
-/* alarm expand panel */
-.alarm-panel {
-  border-top: 1px solid var(--border);
-  padding: .9rem 1.15rem .9rem;
+/* ── Show-disabled row ── */
+.show-disabled-row {
+  padding: .45rem .25rem; font-size: .8rem; color: var(--ink-dim);
+  cursor: pointer; user-select: none; display: flex; align-items: center; gap: .38rem;
+  transition: color var(--dur-f) var(--ease);
 }
-@media (prefers-reduced-motion: no-preference) {
-  @keyframes panel-in {
-    from { opacity: 0; transform: translateY(-4px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-  .alarm-panel { animation: panel-in var(--dur-m) var(--ease) both; }
+.show-disabled-row:hover { color: var(--ink); }
+
+/* ── FAB ── */
+.fab {
+  position: fixed;
+  right: 1.15rem;
+  bottom: calc(1.15rem + env(safe-area-inset-bottom));
+  z-index: 700;
+  width: 3.2rem; height: 3.2rem; border-radius: 50%;
+  background: var(--accent); color: var(--accent-fg);
+  border: none; cursor: pointer; font-family: var(--font-ui);
+  font-size: 1.6rem; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 6px 24px -6px rgba(0,0,0,.45);
+  transition: background var(--dur-f) var(--ease), transform var(--dur-f) var(--ease);
 }
+.fab:active { transform: scale(.9); }
+.fab:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+/* ── Sheet backdrop ── */
+.sheet-backdrop {
+  position: fixed; inset: 0; z-index: 800;
+  background: rgba(0,0,0,.45);
+  opacity: 0; pointer-events: none;
+  transition: opacity var(--dur-m) var(--ease);
+}
+.sheet-backdrop.open { opacity: 1; pointer-events: auto; }
+
+/* ── Bottom sheet ── */
+.edit-sheet {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 900;
+  max-height: 88dvh; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  background: var(--surface-hi);
+  backdrop-filter: blur(28px) saturate(1.6);
+  -webkit-backdrop-filter: blur(28px) saturate(1.6);
+  border: 1px solid var(--border);
+  border-radius: 22px 22px 0 0;
+  padding: .7rem 1.15rem calc(1.3rem + env(safe-area-inset-bottom));
+  transform: translateY(100%);
+  transition: transform var(--dur-m) var(--ease);
+  box-shadow: 0 -10px 40px -10px rgba(0,0,0,.45);
+}
+.edit-sheet.open { transform: translateY(0); }
+
+.sheet-grabber {
+  width: 36px; height: 4px; border-radius: 99px;
+  background: var(--ink-dim); opacity: .35;
+  margin: 0 auto .75rem;
+}
+.sheet-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 1.1rem;
+}
+.sheet-title {
+  font-size: 1.05rem; font-weight: 700;
+}
+.sheet-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: .5rem; margin-top: .85rem;
+}
+.sheet-footer-left { display: flex; gap: .5rem; }
 
 /* ── Form fields ── */
 label.field {
@@ -276,8 +303,13 @@ input[type=text]:focus, input[type=time]:focus, select:focus {
 
 select.gradual-dur { width: auto; font-size: .9rem; padding: .4rem .6rem; }
 select.gradual-dur:disabled { opacity: .4; }
-
 .hint { font-size: .78rem; color: var(--ink-dim); margin-bottom: .45rem; }
+.gradual-wrap { margin-bottom: .65rem; }
+.gradual-sub {
+  margin-top: .35rem; margin-left: calc(2.6rem + .55rem);
+  display: flex; align-items: center; gap: .5rem;
+  font-size: .88rem; color: var(--ink-dim);
+}
 
 /* ── Buttons ── */
 button {
@@ -292,18 +324,13 @@ button:active { transform: scale(.97); background: var(--surface-hi); }
 button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 button.primary { border-color: var(--accent); color: var(--accent); }
 button.primary:active { background: var(--accent-dim); }
-button.add-btn { width: 100%; font-size: 1rem; border-color: var(--accent); color: var(--accent); }
 button.danger { border-color: var(--danger); color: var(--danger); }
 button.danger:active { background: var(--danger-dim); }
-
-.panel-footer { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-top: .75rem; }
-.footer-actions { display: flex; gap: .5rem; }
-.gradual-wrap { margin-bottom: .65rem; }
-.gradual-sub {
-  margin-top: .35rem; margin-left: calc(2.6rem + .55rem);
-  display: flex; align-items: center; gap: .5rem;
-  font-size: .88rem; color: var(--ink-dim);
+button.icon {
+  padding: .4rem; border: none; background: transparent;
+  box-shadow: none; opacity: .5; min-height: unset; min-width: 2.5rem;
 }
+button.icon:active { opacity: 1; background: transparent; transform: none; }
 
 /* ── Toast ── */
 #toast {
@@ -321,6 +348,21 @@ button.danger:active { background: var(--danger-dim); }
 </style>
 </head>
 <body>
+
+{# ── Pre-group alarms ── #}
+{% set ns = namespace(today_alarms=[], upcoming_alarms=[], disabled_alarms=[]) %}
+{% for a in alarms %}
+  {% if not a.enabled %}
+    {% set ns.disabled_alarms = ns.disabled_alarms + [a] %}
+  {% elif not a.days or today_weekday in a.days %}
+    {% set ns.today_alarms = ns.today_alarms + [a] %}
+  {% else %}
+    {% set ns.upcoming_alarms = ns.upcoming_alarms + [a] %}
+  {% endif %}
+{% endfor %}
+{% set day_abbr  = ['M','T','W','T','F','S','S'] %}
+{% set day_names = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'] %}
+
 <div class="page">
 
   <header class="hero">
@@ -346,142 +388,209 @@ button.danger:active { background: var(--danger-dim); }
   </div>
   {% endif %}
 
-  <p class="section-head">Alarms</p>
+  <!-- Alarm groups -->
+  <div class="alarm-feed">
 
-  <!-- Add alarm collapsible -->
-  <div class="glass add-alarm-card">
-    <button type="button" class="add-alarm-toggle" id="add-alarm-btn"
-            onclick="toggleAddAlarm()" aria-expanded="false">
-      <span class="add-icon" aria-hidden="true">+</span>
-      New Alarm
-    </button>
-    <div id="add-alarm-form" hidden>
-      <div class="add-form-body">
-        <form method="post" action="{{ url_for('create_alarm') }}">
-          <label class="field">Time
-            <input type="time" name="time" required>
-          </label>
-          <label class="field">Label
-            <input type="text" name="label" placeholder="Wake up">
-          </label>
-          <div class="hint">Repeat — leave all off for every day</div>
-          <div class="day-dots">
-            {% set day_abbr = ['M','T','W','T','F','S','S'] %}
-            {% for i in range(7) %}
-              <label class="day-dot" title="{{ ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][i] }}">
-                <input type="checkbox" name="days" value="{{ i }}">
-                <span>{{ day_abbr[i] }}</span>
-              </label>
-            {% endfor %}
-          </div>
-          <button class="add-btn" type="submit">Add Alarm</button>
-        </form>
-      </div>
-    </div>
-  </div>
-
-  <!-- Alarm list -->
-  {% if not alarms %}
-    <p style="opacity:.45; padding:.6rem .25rem; font-size:.9rem;">No alarms yet.</p>
-  {% endif %}
-  <ul class="alarms">
-    {% set day_abbr = ['M','T','W','T','F','S','S'] %}
-    {% set day_names = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'] %}
-    {% set lib_names = audio_files | map(attribute='name') | list %}
-    {% for a in alarms %}
-      <li id="ali-{{ a.id }}" style="--i: {{ loop.index0 }}"
-          class="glass alarm-item {{ '' if a.enabled else 'alarm-disabled' }}">
-        <div class="alarm-summary"
-             onclick="toggleAlarmPanel('{{ a.id }}')"
-             id="sum-{{ a.id }}" aria-expanded="false" role="button" tabindex="0"
-             onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleAlarmPanel('{{ a.id }}');}">
-          <span class="alarm-time">{{ a.time }}</span>
-          <div class="alarm-info">
-            <div class="alarm-lbl">
-              {{ a.label or '(no label)' }}
-              {% if not a.enabled %}<span class="paused-pill">Paused</span>{% endif %}
-            </div>
+    {% if ns.today_alarms %}
+    <div class="feed-group">
+      <p class="section-head">Today</p>
+      <ul class="alarms">
+        {% for a in ns.today_alarms %}
+        <li id="card-{{ a.id }}" class="glass alarm-card" style="--i:{{ loop.index0 }}"
+            onclick="openSheet('{{ a.id }}')" tabindex="0" role="button"
+            onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openSheet('{{ a.id }}');}">
+          <div class="alarm-card-body">
+            <div class="alarm-card-time">{{ a.time }}</div>
+            <div class="alarm-card-label">{{ a.label or '(no label)' }}</div>
             <div class="days-display">
               {% for i in range(7) %}
-                <span class="day-pip {{ 'active' if i in a.days else '' }}"
-                      title="{{ day_names[i] }}">{{ day_abbr[i] }}</span>
+                <span class="day-pip {{ 'active' if i in a.days else '' }}" title="{{ day_names[i] }}">{{ day_abbr[i] }}</span>
               {% endfor %}
             </div>
           </div>
-          <span class="alarm-caret" id="caret-{{ a.id }}" aria-hidden="true">›</span>
-        </div>
-        <div class="alarm-panel" id="ap-{{ a.id }}" hidden>
-          <form id="edit-{{ a.id }}" method="post" action="{{ url_for('edit_alarm', alarm_id=a.id) }}">
-            <label class="field">Time
-              <input type="time" name="time" value="{{ a.time }}" required>
+          <div class="alarm-card-right" onclick="event.stopPropagation()">
+            <label class="switch-wrap" title="{{ 'Disable' if a.enabled else 'Enable' }}">
+              <input type="checkbox" {{ 'checked' if a.enabled }}
+                     onchange="toggleAlarmEnabled('{{ a.id }}', event)">
+              <span class="switch-track"></span>
+              <span class="switch-thumb"></span>
             </label>
-            <label class="field">Label
-              <input type="text" name="label" value="{{ a.label or '' }}" placeholder="Wake up">
-            </label>
-            <div class="hint">Repeat — leave all off for every day</div>
-            <div class="day-dots">
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    {% if ns.upcoming_alarms %}
+    <div class="feed-group">
+      <p class="section-head">Upcoming</p>
+      <ul class="alarms">
+        {% for a in ns.upcoming_alarms %}
+        <li id="card-{{ a.id }}" class="glass alarm-card" style="--i:{{ (ns.today_alarms|length) + loop.index0 }}"
+            onclick="openSheet('{{ a.id }}')" tabindex="0" role="button"
+            onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openSheet('{{ a.id }}');}">
+          <div class="alarm-card-body">
+            <div class="alarm-card-time">{{ a.time }}</div>
+            <div class="alarm-card-label">{{ a.label or '(no label)' }}</div>
+            <div class="days-display">
               {% for i in range(7) %}
-                <label class="day-dot" title="{{ day_names[i] }}">
-                  <input type="checkbox" name="days" value="{{ i }}" {% if i in a.days %}checked{% endif %}>
-                  <span>{{ day_abbr[i] }}</span>
-                </label>
+                <span class="day-pip {{ 'active' if i in a.days else '' }}" title="{{ day_names[i] }}">{{ day_abbr[i] }}</span>
               {% endfor %}
             </div>
-            <label class="field">Audio
-              <select name="audio_file">
-                <option value="" {% if a.audio_file not in lib_names %}selected{% endif %}>— Default tone —</option>
-                {% for f in audio_files %}
-                  <option value="{{ f.name }}" {% if f.name == a.audio_file %}selected{% endif %}>{{ f.name }}</option>
-                {% endfor %}
-              </select>
-            </label>
-            <div class="gradual-wrap">
-              <label class="switch-row" style="margin-bottom:0;">
-                <span class="switch-wrap">
-                  <input type="checkbox" id="grad-{{ a.id }}"
-                         {% if a.fade_in_seconds > 0 %}checked{% endif %}
-                         onchange="var sub=this.closest('.gradual-wrap').querySelector('.gradual-sub');sub.hidden=!this.checked;sub.querySelector('select').disabled=!this.checked;">
-                  <span class="switch-track"></span>
-                  <span class="switch-thumb"></span>
-                </span>
-                Fade in volume
-              </label>
-              <div class="gradual-sub" {% if not a.fade_in_seconds %}hidden{% endif %}>
-                <span>over</span>
-                <select name="fade_in_seconds" id="graddur-{{ a.id }}"
-                        {% if not a.fade_in_seconds %}disabled{% endif %} class="gradual-dur">
-                  <option value="30"  {% if a.fade_in_seconds == 30  %}selected{% endif %}>30 sec</option>
-                  <option value="60"  {% if a.fade_in_seconds == 60  %}selected{% endif %}>1 min</option>
-                  <option value="120" {% if a.fade_in_seconds == 120 %}selected{% endif %}>2 min</option>
-                  <option value="300" {% if a.fade_in_seconds not in [30,60,120] or a.fade_in_seconds == 300 %}selected{% endif %}>5 min</option>
-                </select>
-              </div>
-            </div>
-            <label class="switch-row">
-              <span class="switch-wrap">
-                <input type="checkbox" name="enabled" value="1" id="en-{{ a.id }}" {% if a.enabled %}checked{% endif %}>
-                <span class="switch-track"></span>
-                <span class="switch-thumb"></span>
-              </span>
-              Alarm enabled
-            </label>
-          </form>
-          <form id="del-{{ a.id }}" method="post" action="{{ url_for('delete_alarm', alarm_id=a.id) }}"></form>
-          <div class="panel-footer">
-            <div class="footer-actions">
-              <button class="primary" type="submit" form="edit-{{ a.id }}">Save</button>
-              <button type="button" onclick="closeAlarmPanel('{{ a.id }}')">Cancel</button>
-            </div>
-            <button class="danger" type="submit" form="del-{{ a.id }}">Delete</button>
           </div>
-        </div>
-      </li>
-    {% endfor %}
-  </ul>
+          <div class="alarm-card-right" onclick="event.stopPropagation()">
+            <label class="switch-wrap" title="{{ 'Disable' if a.enabled else 'Enable' }}">
+              <input type="checkbox" {{ 'checked' if a.enabled }}
+                     onchange="toggleAlarmEnabled('{{ a.id }}', event)">
+              <span class="switch-track"></span>
+              <span class="switch-thumb"></span>
+            </label>
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    {% if ns.disabled_alarms %}
+    <div class="feed-group">
+      <div class="show-disabled-row" id="disabled-toggle-row"
+           onclick="toggleDisabledSection()" role="button" tabindex="0"
+           onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleDisabledSection();}">
+        <svg id="disabled-caret" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2.5" stroke-linecap="round" style="transition:transform var(--dur-f) var(--ease);flex-shrink:0;">
+          <polyline points="9 18 15 12 9 6"/>
+        </svg>
+        Show disabled alarms ({{ ns.disabled_alarms|length }})
+      </div>
+      <ul class="alarms" id="disabled-list" hidden>
+        {% for a in ns.disabled_alarms %}
+        <li id="card-{{ a.id }}" class="glass alarm-card alarm-disabled"
+            style="--i:{{ (ns.today_alarms|length) + (ns.upcoming_alarms|length) + loop.index0 }}"
+            onclick="openSheet('{{ a.id }}')" tabindex="0" role="button"
+            onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openSheet('{{ a.id }}');}">
+          <div class="alarm-card-body">
+            <div class="alarm-card-time">{{ a.time }}</div>
+            <div class="alarm-card-label">{{ a.label or '(no label)' }}</div>
+            <div class="days-display">
+              {% for i in range(7) %}
+                <span class="day-pip {{ 'active' if i in a.days else '' }}" title="{{ day_names[i] }}">{{ day_abbr[i] }}</span>
+              {% endfor %}
+            </div>
+          </div>
+          <div class="alarm-card-right" onclick="event.stopPropagation()">
+            <label class="switch-wrap" title="Enable">
+              <input type="checkbox"
+                     onchange="toggleAlarmEnabled('{{ a.id }}', event)">
+              <span class="switch-track"></span>
+              <span class="switch-thumb"></span>
+            </label>
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    {% if not alarms %}
+      <p style="opacity:.45; padding:.6rem .25rem; font-size:.9rem;">No alarms yet — tap + to add one.</p>
+    {% endif %}
+
+  </div><!-- .alarm-feed -->
 
 </div><!-- .page -->
 
+<!-- FAB -->
+<button class="fab" id="fab-btn" onclick="openSheetForNew()" aria-label="New alarm" title="New alarm">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+  </svg>
+</button>
+
+<!-- Sheet backdrop -->
+<div class="sheet-backdrop" id="sheet-backdrop" onclick="closeSheet()"></div>
+
+<!-- Bottom sheet -->
+<div class="edit-sheet" id="edit-sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+  <div class="sheet-grabber" aria-hidden="true"></div>
+  <div class="sheet-header">
+    <span class="sheet-title" id="sheet-title">Edit Alarm</span>
+    <button type="button" class="icon" onclick="closeSheet()" aria-label="Close">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+      </svg>
+    </button>
+  </div>
+
+  <form id="sheet-form" method="post" action="">
+    <label class="field">Time
+      <input type="time" name="time" id="sheet-time" required>
+    </label>
+    <label class="field">Label
+      <input type="text" name="label" id="sheet-label" placeholder="Wake up">
+    </label>
+    <div class="hint">Repeat — leave all off for every day</div>
+    <div class="day-dots">
+      {% for i in range(7) %}
+        <label class="day-dot" title="{{ day_names[i] }}">
+          <input type="checkbox" name="days" value="{{ i }}" id="sheet-day-{{ i }}">
+          <span>{{ day_abbr[i] }}</span>
+        </label>
+      {% endfor %}
+    </div>
+    <label class="field">Audio
+      <select name="audio_file" id="sheet-audio">
+        <option value="">— Default tone —</option>
+        {% for f in audio_files %}
+          <option value="{{ f.name }}">{{ f.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <div class="gradual-wrap">
+      <label class="switch-row" style="margin-bottom:0;">
+        <span class="switch-wrap">
+          <input type="checkbox" id="sheet-fade-toggle"
+                 onchange="var sub=this.closest('.gradual-wrap').querySelector('.gradual-sub');sub.hidden=!this.checked;sub.querySelector('select').disabled=!this.checked;">
+          <span class="switch-track"></span>
+          <span class="switch-thumb"></span>
+        </span>
+        Fade in volume
+      </label>
+      <div class="gradual-sub" hidden>
+        <span>over</span>
+        <select name="fade_in_seconds" id="sheet-fade-dur" disabled class="gradual-dur">
+          <option value="30">30 sec</option>
+          <option value="60">1 min</option>
+          <option value="120">2 min</option>
+          <option value="300">5 min</option>
+        </select>
+      </div>
+    </div>
+    <label class="switch-row">
+      <span class="switch-wrap">
+        <input type="checkbox" name="enabled" value="1" id="sheet-enabled" checked>
+        <span class="switch-track"></span>
+        <span class="switch-thumb"></span>
+      </span>
+      Alarm enabled
+    </label>
+  </form>
+
+  <form id="sheet-delete-form" method="post" action="" hidden></form>
+
+  <div class="sheet-footer">
+    <div class="sheet-footer-left">
+      <button class="primary" type="submit" form="sheet-form">Save</button>
+      <button type="button" onclick="closeSheet()">Cancel</button>
+    </div>
+    <button class="danger" id="sheet-delete-btn" type="button" style="display:none" onclick="deleteCurrentAlarm()">Delete</button>
+  </div>
+</div>
+
 <div id="toast" aria-live="polite"></div>
+
+<script type="application/json" id="alarms-data">{{ alarms | tojson }}</script>
 
 <script>
 // ── Toast ──
@@ -494,36 +603,170 @@ function showToast(msg) {
   _toastTimer = setTimeout(() => t.classList.remove('show'), 3500);
 }
 
-// ── Add-alarm toggle ──
-function toggleAddAlarm() {
-  const form = document.getElementById('add-alarm-form');
-  const btn  = document.getElementById('add-alarm-btn');
-  const open = !form.hidden;
-  form.hidden = open;
-  btn.setAttribute('aria-expanded', String(!open));
+// ── Alarm data helpers ──
+function getAlarmsData() {
+  return JSON.parse(document.getElementById('alarms-data').textContent);
 }
 
-// ── Alarm panels ──
-function toggleAlarmPanel(id) {
-  const panel = document.getElementById('ap-' + id);
-  const caret = document.getElementById('caret-' + id);
-  const sum   = document.getElementById('sum-' + id);
-  const isOpen = !panel.hidden;
-  document.querySelectorAll('.alarm-panel').forEach(p => { p.hidden = true; });
-  document.querySelectorAll('.alarm-caret').forEach(c => { c.classList.remove('open'); });
-  document.querySelectorAll('[id^="sum-"]').forEach(s => { s.setAttribute('aria-expanded', 'false'); });
-  if (!isOpen) {
-    panel.hidden = false;
-    caret.classList.add('open');
-    sum.setAttribute('aria-expanded', 'true');
+// ── DOM refresh after any mutation ──
+function refreshFeed(html) {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+
+  const newFeed = doc.querySelector('.alarm-feed');
+  const oldFeed = document.querySelector('.alarm-feed');
+  if (newFeed && oldFeed) {
+    const oldList  = document.getElementById('disabled-list');
+    const wasOpen  = oldList && !oldList.hidden;
+    oldFeed.innerHTML = newFeed.innerHTML;
+    if (wasOpen) {
+      const newList  = document.getElementById('disabled-list');
+      const newCaret = document.getElementById('disabled-caret');
+      if (newList)  newList.hidden = false;
+      if (newCaret) newCaret.style.transform = 'rotate(90deg)';
+    }
   }
+
+  const newData = doc.getElementById('alarms-data');
+  const oldData = document.getElementById('alarms-data');
+  if (newData && oldData) oldData.textContent = newData.textContent;
 }
-function closeAlarmPanel(id) {
-  document.getElementById('ap-' + id).hidden = true;
-  document.getElementById('caret-' + id).classList.remove('open');
-  const sum = document.getElementById('sum-' + id);
-  if (sum) sum.setAttribute('aria-expanded', 'false');
+
+// ── Sheet open/close ──
+let _sheetOpener = null;
+
+function _showSheet() {
+  document.getElementById('sheet-backdrop').classList.add('open');
+  document.getElementById('edit-sheet').classList.add('open');
+  document.body.classList.add('sheet-open');
+  setTimeout(() => {
+    const labelInput = document.getElementById('sheet-label');
+    if (labelInput) labelInput.focus();
+  }, 230);
 }
+
+function closeSheet() {
+  document.getElementById('sheet-backdrop').classList.remove('open');
+  document.getElementById('edit-sheet').classList.remove('open');
+  document.body.classList.remove('sheet-open');
+  if (_sheetOpener) { _sheetOpener.focus(); _sheetOpener = null; }
+}
+
+function openSheet(id) {
+  const alarm = getAlarmsData().find(a => a.id === id);
+  if (!alarm) return;
+
+  _sheetOpener = document.getElementById('card-' + id);
+
+  document.getElementById('sheet-title').textContent = 'Edit Alarm';
+  document.getElementById('sheet-form').action        = '/alarms/' + id + '/edit';
+  document.getElementById('sheet-delete-form').action = '/alarms/' + id + '/delete';
+  document.getElementById('sheet-delete-btn').style.display = '';
+
+  document.getElementById('sheet-time').value  = alarm.time;
+  document.getElementById('sheet-label').value = alarm.label || '';
+
+  for (let i = 0; i < 7; i++) {
+    const cb = document.getElementById('sheet-day-' + i);
+    if (cb) cb.checked = (alarm.days || []).includes(i);
+  }
+
+  document.getElementById('sheet-audio').value = alarm.audio_file || '';
+
+  const fade        = alarm.fade_in_seconds || 0;
+  const fadeToggle  = document.getElementById('sheet-fade-toggle');
+  const fadeSub     = fadeToggle.closest('.gradual-wrap').querySelector('.gradual-sub');
+  const fadeDur     = document.getElementById('sheet-fade-dur');
+  fadeToggle.checked = fade > 0;
+  fadeSub.hidden     = fade === 0;
+  fadeDur.disabled   = fade === 0;
+  if (fade > 0) fadeDur.value = [30, 60, 120, 300].includes(fade) ? String(fade) : '300';
+
+  document.getElementById('sheet-enabled').checked = alarm.enabled !== false;
+
+  _showSheet();
+}
+
+function openSheetForNew() {
+  _sheetOpener = document.getElementById('fab-btn');
+
+  document.getElementById('sheet-title').textContent = 'New Alarm';
+  document.getElementById('sheet-form').action        = '/alarms';
+  document.getElementById('sheet-delete-btn').style.display = 'none';
+
+  const now = new Date();
+  document.getElementById('sheet-time').value  = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+  document.getElementById('sheet-label').value = '';
+
+  for (let i = 0; i < 7; i++) {
+    const cb = document.getElementById('sheet-day-' + i);
+    if (cb) cb.checked = false;
+  }
+
+  document.getElementById('sheet-audio').value = '';
+
+  const fadeToggle = document.getElementById('sheet-fade-toggle');
+  const fadeSub    = fadeToggle.closest('.gradual-wrap').querySelector('.gradual-sub');
+  const fadeDur    = document.getElementById('sheet-fade-dur');
+  fadeToggle.checked = false;
+  fadeSub.hidden     = true;
+  fadeDur.disabled   = true;
+  fadeDur.value      = '300';
+
+  document.getElementById('sheet-enabled').checked = true;
+
+  _showSheet();
+}
+
+// ── Sheet form submit (AJAX) ──
+document.getElementById('sheet-form').addEventListener('submit', function(e) {
+  e.preventDefault();
+  fetch(this.action, { method: 'POST', body: new FormData(this) })
+    .then(() => fetch(location.href))
+    .then(r => r.text())
+    .then(html => { refreshFeed(html); closeSheet(); showToast('Alarm saved'); })
+    .catch(() => showToast('Failed to save — check connection'));
+});
+
+// ── Delete ──
+function deleteCurrentAlarm() {
+  if (!window.confirm('Delete this alarm?')) return;
+  const form = document.getElementById('sheet-delete-form');
+  fetch(form.action, { method: 'POST', body: new FormData(form) })
+    .then(() => fetch(location.href))
+    .then(r => r.text())
+    .then(html => { refreshFeed(html); closeSheet(); showToast('Alarm deleted'); })
+    .catch(() => showToast('Failed to delete — check connection'));
+}
+
+// ── Quick toggle (card-face switch) ──
+function toggleAlarmEnabled(id, event) {
+  event.stopPropagation();
+  const card = document.getElementById('card-' + id);
+  if (card) card.classList.toggle('alarm-disabled');
+
+  fetch('/alarms/' + id + '/toggle', { method: 'POST' })
+    .then(() => fetch(location.href))
+    .then(r => r.text())
+    .then(html => refreshFeed(html))
+    .catch(() => {
+      if (card) card.classList.toggle('alarm-disabled');
+      if (event.target) event.target.checked = !event.target.checked;
+      showToast('Failed to toggle alarm');
+    });
+}
+
+// ── Disabled section expand/collapse ──
+function toggleDisabledSection() {
+  const list  = document.getElementById('disabled-list');
+  const caret = document.getElementById('disabled-caret');
+  if (!list) return;
+  const open = !list.hidden;
+  list.hidden = open;
+  if (caret) caret.style.transform = open ? '' : 'rotate(90deg)';
+}
+
+// ── Escape closes sheet ──
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSheet(); });
 
 // ── Live clock ──
 function updateClock() {
