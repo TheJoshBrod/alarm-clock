@@ -603,51 +603,51 @@ button.icon:hover { opacity: 1; background: transparent; box-shadow: none; trans
             {% endif %}
           </div>
           
-          <div class="briefing-divider"></div>
-          
           <div class="briefing-right">
-            {% if tod == 'night' %}
-              {% if moonrise_hhmm and moonset_hhmm %}
-              <div class="sun-arc-wrap">
-                <svg viewBox="0 0 100 50" class="sun-arc-svg">
-                  <path d="M 5 50 A 45 45 0 0 1 95 50" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" opacity="0.4"/>
-                  {% if show_moon %}
-                  <text x="{{ moon_x }}" y="{{ moon_y + 4 }}" font-size="14" text-anchor="middle" style="filter: drop-shadow(0 0 4px rgba(255,255,255,0.6));">{{ moon_phase_emoji }}</text>
-                  {% endif %}
-                </svg>
+            {% if is_sun_up %}
+            <div class="sun-arc-wrap">
+              <svg viewBox="0 0 100 50" class="sun-arc-svg">
+                <path d="M 5 50 A 45 45 0 0 1 95 50" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" opacity="0.4"/>
+                <circle cx="{{ sun_x }}" cy="{{ sun_y }}" r="4.5" fill="#e9c080" style="filter: drop-shadow(0 0 5px #e9c080); opacity: 0.9;" />
+              </svg>
+            </div>
+            <div class="sun-times">
+              <div class="sun-time">
+                <span style="color:var(--accent);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 18a5 5 0 0 0-10 0"/><line x1="12" y1="2" x2="12" y2="9"/><line x1="4.22" y1="10.22" x2="5.64" y2="11.64"/><line x1="2" y1="18" x2="4" y2="18"/><line x1="20" y1="18" x2="22" y2="18"/><line x1="19.78" y1="10.22" x2="18.36" y2="11.64"/><polyline points="16 5 12 9 8 5"/></svg></span>
+                <span>Sunrise<br><span style="color:var(--ink); font-weight: 500; font-size: .75rem;">{{ sunrise_hhmm }}</span></span>
               </div>
-              <div class="sun-times">
-                <div class="sun-time">
-                  <span style="color:var(--accent);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
-                  <span>Moonrise<br><span style="color:var(--ink); font-weight: 500; font-size: .75rem;">{{ moonrise_hhmm }}</span></span>
-                </div>
-                <div class="sun-time">
-                  <span style="color:var(--accent);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
-                  <span>Moonset<br><span style="color:var(--ink); font-weight: 500; font-size: .75rem;">{{ moonset_hhmm }}</span></span>
-                </div>
+              <div class="sun-time">
+                <span style="color:var(--accent);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 18a5 5 0 0 0-10 0"/><line x1="12" y1="2" x2="12" y2="9"/><line x1="4.22" y1="10.22" x2="5.64" y2="11.64"/><line x1="2" y1="18" x2="4" y2="18"/><line x1="20" y1="18" x2="22" y2="18"/><line x1="19.78" y1="10.22" x2="18.36" y2="11.64"/><polyline points="8 14 12 10 16 14"/></svg></span>
+                <span>Sunset<br><span style="color:var(--ink); font-weight: 500; font-size: .75rem;">{{ sunset_hhmm }}</span></span>
               </div>
-              {% endif %}
+            </div>
+            {% elif is_moon_up %}
+            <div class="sun-arc-wrap">
+              <svg viewBox="0 0 100 50" class="sun-arc-svg">
+                <path d="M 5 50 A 45 45 0 0 1 95 50" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" opacity="0.4"/>
+                <text x="{{ moon_x }}" y="{{ moon_y + 4 }}" font-size="14" text-anchor="middle" style="filter: drop-shadow(0 0 4px rgba(255,255,255,0.6));">{{ moon_emoji }}</text>
+              </svg>
+            </div>
+            <div class="sun-times">
+              <div class="sun-time">
+                <span style="color:var(--accent);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+                <span>Moonrise<br><span style="color:var(--ink); font-weight: 500; font-size: .75rem;">{{ moonrise_hhmm }}</span></span>
+              </div>
+              <div class="sun-time">
+                <span style="color:var(--accent);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+                <span>Moonset<br><span style="color:var(--ink); font-weight: 500; font-size: .75rem;">{{ moonset_hhmm }}</span></span>
+              </div>
+            </div>
             {% else %}
-              {% if sunrise_hhmm and sunset_hhmm %}
-              <div class="sun-arc-wrap">
-                <svg viewBox="0 0 100 50" class="sun-arc-svg">
-                  <path d="M 5 50 A 45 45 0 0 1 95 50" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" opacity="0.4"/>
-                  {% if show_sun %}
-                  <circle cx="{{ sun_x }}" cy="{{ sun_y }}" r="4.5" fill="#e9c080" style="filter: drop-shadow(0 0 5px #e9c080); opacity: 0.9;" />
-                  {% endif %}
-                </svg>
+            <div style="text-align: center; margin: auto 0; display: flex; flex-direction: column; align-items: center;">
+              <div style="font-size: 2.2rem; line-height: 1; margin-bottom: 0.3rem;">{{ moon_emoji }}</div>
+              <div style="font-weight: 600; font-size: 0.95rem;">{{ moon_name }}</div>
+              <div style="font-size: 0.72rem; color: var(--ink-dim); margin-top: 0.35rem; display: flex; gap: 0.5rem;">
+                <span>Sun: {{ next_sunrise_hhmm }}</span>
+                <span style="opacity: 0.5;">|</span>
+                <span>Moon: {{ next_moonrise_hhmm }}</span>
               </div>
-              <div class="sun-times">
-                <div class="sun-time">
-                  <span style="color:var(--accent);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 18a5 5 0 0 0-10 0"/><line x1="12" y1="2" x2="12" y2="9"/><line x1="4.22" y1="10.22" x2="5.64" y2="11.64"/><line x1="2" y1="18" x2="4" y2="18"/><line x1="20" y1="18" x2="22" y2="18"/><line x1="19.78" y1="10.22" x2="18.36" y2="11.64"/><polyline points="16 5 12 9 8 5"/></svg></span>
-                  <span>Sunrise<br><span style="color:var(--ink); font-weight: 500; font-size: .75rem;">{{ sunrise_hhmm }}</span></span>
-                </div>
-                <div class="sun-time">
-                  <span style="color:var(--accent);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 18a5 5 0 0 0-10 0"/><line x1="12" y1="2" x2="12" y2="9"/><line x1="4.22" y1="10.22" x2="5.64" y2="11.64"/><line x1="2" y1="18" x2="4" y2="18"/><line x1="20" y1="18" x2="22" y2="18"/><line x1="19.78" y1="10.22" x2="18.36" y2="11.64"/><polyline points="8 14 12 10 16 14"/></svg></span>
-                  <span>Sunset<br><span style="color:var(--ink); font-weight: 500; font-size: .75rem;">{{ sunset_hhmm }}</span></span>
-                </div>
-              </div>
-              {% endif %}
+            </div>
             {% endif %}
           </div>
         </div>

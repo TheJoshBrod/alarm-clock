@@ -137,63 +137,127 @@ def fetch_location() -> dict | None:
         return None
 
 
-def compute_sun_times(loc: dict | None, for_date: date | None = None) -> tuple[str | None, str | None]:
-    """Return (sunrise_hhmm, sunset_hhmm) for today, or (None, None) on failure."""
+def compute_astro_data(loc: dict | None) -> dict:
     if loc is None:
-        return None, None
+        return {}
+    
     try:
         from astral import LocationInfo
         from astral.sun import sun
-        target = for_date or date.today()
-        location = LocationInfo("here", "", loc["tz"], loc["lat"], loc["lon"])
-        s = sun(location.observer, date=target, tzinfo=loc["tz"])
-        return s["sunrise"].strftime("%H:%M"), s["sunset"].strftime("%H:%M")
-    except Exception as e:
-        print(f"Sun time calculation failed: {e}")
-        return None, None
-
-
-def compute_moon_times(loc: dict | None) -> tuple[str | None, str | None, float | None]:
-    """Return (moonrise_hhmm, moonset_hhmm, moon_phase) for today, or (None, None, None) on failure."""
-    if loc is None:
-        return None, None, None
-    try:
-        from astral import LocationInfo
         from astral.moon import moonrise, moonset, phase
+        from datetime import datetime, timedelta
+        from zoneinfo import ZoneInfo
+        import math
         
-        now = datetime.now(ZoneInfo(loc["tz"]))
+        tz = ZoneInfo(loc["tz"])
+        now = datetime.now(tz)
         location = LocationInfo("here", "", loc["tz"], loc["lat"], loc["lon"])
         
-        last_rise = None
-        for i in range(3):
-            d = now.date() - timedelta(days=i)
+        try:
+            s = sun(location.observer, date=now.date(), tzinfo=loc["tz"])
+            sunrise = s["sunrise"]
+            sunset = s["sunset"]
+        except Exception:
+            sunrise = sunset = None
+            
+        next_sunrise = None
+        for i in range(2):
             try:
-                r = moonrise(location.observer, date=d, tzinfo=loc["tz"])
-                if r <= now:
-                    if last_rise is None or r > last_rise:
-                        last_rise = r
-            except Exception:
-                pass
-                
-        next_set = None
-        for i in range(3):
+                ns = sun(location.observer, date=now.date() + timedelta(days=i), tzinfo=loc["tz"])["sunrise"]
+                if ns > now:
+                    next_sunrise = ns
+                    break
+            except: pass
+            
+        is_sun_up = False
+        if sunrise and sunset and sunrise <= now <= sunset:
+            is_sun_up = True
+            
+        sun_progress = 0
+        if is_sun_up:
+            total_s = (sunset - sunrise).total_seconds()
+            elapsed = (now - sunrise).total_seconds()
+            sun_progress = elapsed / total_s if total_s else 0
+            
+        rises = []
+        sets = []
+        for i in range(-2, 3):
             d = now.date() + timedelta(days=i)
-            try:
-                s = moonset(location.observer, date=d, tzinfo=loc["tz"])
-                if s >= now:
-                    if next_set is None or s < next_set:
-                        next_set = s
-            except Exception:
-                pass
-                
-        r_str = last_rise.strftime("%H:%M") if last_rise else None
-        s_str = next_set.strftime("%H:%M") if next_set else None
-        m_phase = phase(now.date())
+            try: rises.append(moonrise(location.observer, date=d, tzinfo=loc["tz"]))
+            except: pass
+            try: sets.append(moonset(location.observer, date=d, tzinfo=loc["tz"]))
+            except: pass
+            
+        rises.sort()
+        sets.sort()
         
-        return r_str, s_str, m_phase
+        passes = []
+        for r in rises:
+            for s in sets:
+                if s > r:
+                    passes.append((r, s))
+                    break
+                    
+        current_moon_pass = None
+        for p in passes:
+            if p[0] <= now <= p[1]:
+                current_moon_pass = p
+                break
+                
+        next_moonrise = None
+        for r in rises:
+            if r > now:
+                next_moonrise = r
+                break
+                
+        is_moon_up = current_moon_pass is not None
+        moon_progress = 0
+        moon_pass_start = None
+        moon_pass_end = None
+        if is_moon_up:
+            moon_pass_start, moon_pass_end = current_moon_pass
+            total_m = (moon_pass_end - moon_pass_start).total_seconds()
+            elapsed_m = (now - moon_pass_start).total_seconds()
+            moon_progress = elapsed_m / total_m if total_m else 0
+            
+        m_phase_val = phase(now.date())
+        val = m_phase_val
+        if val < 1.84: 
+            moon_emoji, moon_name = "🌑", "New Moon"
+        elif val < 5.53: 
+            moon_emoji, moon_name = "🌒", "Waxing Crescent"
+        elif val < 9.22: 
+            moon_emoji, moon_name = "🌓", "First Quarter"
+        elif val < 12.91: 
+            moon_emoji, moon_name = "🌔", "Waxing Gibbous"
+        elif val < 16.61: 
+            moon_emoji, moon_name = "🌕", "Full Moon"
+        elif val < 20.30: 
+            moon_emoji, moon_name = "🌖", "Waning Gibbous"
+        elif val < 23.99: 
+            moon_emoji, moon_name = "🌗", "Last Quarter"
+        elif val < 27.68: 
+            moon_emoji, moon_name = "🌘", "Waning Crescent"
+        else: 
+            moon_emoji, moon_name = "🌑", "New Moon"
+
+        return {
+            "is_sun_up": is_sun_up,
+            "sun_progress": sun_progress,
+            "sunrise_hhmm": sunrise.strftime("%H:%M") if sunrise else "",
+            "sunset_hhmm": sunset.strftime("%H:%M") if sunset else "",
+            "next_sunrise_hhmm": next_sunrise.strftime("%H:%M") if next_sunrise else "",
+            "is_moon_up": is_moon_up,
+            "moon_progress": moon_progress,
+            "moonrise_hhmm": moon_pass_start.strftime("%H:%M") if moon_pass_start else "",
+            "moonset_hhmm": moon_pass_end.strftime("%H:%M") if moon_pass_end else "",
+            "next_moonrise_hhmm": next_moonrise.strftime("%H:%M") if next_moonrise else "",
+            "moon_emoji": moon_emoji,
+            "moon_name": moon_name
+        }
     except Exception as e:
-        print(f"Moon time calculation failed: {e}")
-        return None, None, None
+        print(f"Astro calculation failed: {e}")
+        return {}
 
 
 def fetch_weather(loc: dict | None) -> str | None:
@@ -466,66 +530,20 @@ def index():
     else:
         tod = "night"
 
-    sunrise_hhmm, sunset_hhmm = compute_sun_times(_location)
-    moonrise_hhmm, moonset_hhmm, moon_phase_val = compute_moon_times(_location)
+    astro = compute_astro_data(_location)
     weather_forecast = fetch_weather(_location)
-
-    sun_x, sun_y, show_sun = 20, 23, False
-    moon_x, moon_y, show_moon = 20, 23, False
-
-    if sunrise_hhmm and sunset_hhmm:
-        try:
-            curr_mins = now.hour * 60 + now.minute
-            h_r, m_r = map(int, sunrise_hhmm.split(':'))
-            rise_mins = h_r * 60 + m_r
-            h_s, m_s = map(int, sunset_hhmm.split(':'))
-            set_mins = h_s * 60 + m_s
-            
-            if curr_mins >= rise_mins and curr_mins <= set_mins and set_mins > rise_mins:
-                progress = (curr_mins - rise_mins) / (set_mins - rise_mins)
-                angle = math.pi * (1 - progress)
-                sun_x = 50 + 45 * math.cos(angle)
-                sun_y = 50 - 45 * math.sin(angle)
-                show_sun = True
-        except Exception:
-            pass
-
-    if moonrise_hhmm and moonset_hhmm:
-        try:
-            curr_mins = now.hour * 60 + now.minute
-            h_r, m_r = map(int, moonrise_hhmm.split(':'))
-            rise_mins = h_r * 60 + m_r
-            h_s, m_s = map(int, moonset_hhmm.split(':'))
-            set_mins = h_s * 60 + m_s
-            
-            if set_mins <= rise_mins:
-                set_mins += 24 * 60
-                
-            eff_curr_mins = curr_mins
-            if eff_curr_mins < rise_mins and set_mins > 24 * 60:
-                eff_curr_mins += 24 * 60
-                
-            if rise_mins <= eff_curr_mins <= set_mins and set_mins > rise_mins:
-                progress = (eff_curr_mins - rise_mins) / (set_mins - rise_mins)
-                angle = math.pi * (1 - progress)
-                moon_x = 50 + 45 * math.cos(angle)
-                moon_y = 50 - 45 * math.sin(angle)
-                show_moon = True
-        except Exception:
-            pass
-
-    moon_phase_emoji = "🌑"
-    if moon_phase_val is not None:
-        val = moon_phase_val
-        if val < 1.84: moon_phase_emoji = "🌑"
-        elif val < 5.53: moon_phase_emoji = "🌒"
-        elif val < 9.22: moon_phase_emoji = "🌓"
-        elif val < 12.91: moon_phase_emoji = "🌔"
-        elif val < 16.61: moon_phase_emoji = "🌕"
-        elif val < 20.30: moon_phase_emoji = "🌖"
-        elif val < 23.99: moon_phase_emoji = "🌗"
-        elif val < 27.68: moon_phase_emoji = "🌘"
-        else: moon_phase_emoji = "🌑"
+    
+    sun_x, sun_y = 20, 23
+    if astro.get("is_sun_up"):
+        angle = math.pi * (1 - astro["sun_progress"])
+        sun_x = 50 + 45 * math.cos(angle)
+        sun_y = 50 - 45 * math.sin(angle)
+        
+    moon_x, moon_y = 20, 23
+    if astro.get("is_moon_up"):
+        angle = math.pi * (1 - astro["moon_progress"])
+        moon_x = 50 + 45 * math.cos(angle)
+        moon_y = 50 - 45 * math.sin(angle)
 
     ctx = dict(
         alarms=alarms,
@@ -538,18 +556,12 @@ def index():
         tod=tod,
         today_weekday=now.weekday(),  # Monday=0
         current_hhmm=now.strftime("%H:%M"),
-        sunrise_hhmm=sunrise_hhmm,
-        sunset_hhmm=sunset_hhmm,
         weather_forecast=weather_forecast,
         sun_x=sun_x,
         sun_y=sun_y,
-        show_sun=show_sun,
-        moonrise_hhmm=moonrise_hhmm,
-        moonset_hhmm=moonset_hhmm,
         moon_x=moon_x,
         moon_y=moon_y,
-        show_moon=show_moon,
-        moon_phase_emoji=moon_phase_emoji,
+        **astro
     )
 
     if use_mobile:
