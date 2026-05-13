@@ -457,7 +457,7 @@ button.icon:active { opacity: 1; background: transparent; transform: none; }
                 </label>
               </div>
             </div>
-            <div class="alarm-delete-action" onclick="deleteAlarmDirectly('{{ a.id }}')">
+            <div class="alarm-delete-action" onclick="event.stopPropagation(); deleteAlarmDirectly('{{ a.id }}')">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
             </div>
           </div>
@@ -495,7 +495,7 @@ button.icon:active { opacity: 1; background: transparent; transform: none; }
                 </label>
               </div>
             </div>
-            <div class="alarm-delete-action" onclick="deleteAlarmDirectly('{{ a.id }}')">
+            <div class="alarm-delete-action" onclick="event.stopPropagation(); deleteAlarmDirectly('{{ a.id }}')">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
             </div>
           </div>
@@ -541,7 +541,7 @@ button.icon:active { opacity: 1; background: transparent; transform: none; }
                 </label>
               </div>
             </div>
-            <div class="alarm-delete-action" onclick="deleteAlarmDirectly('{{ a.id }}')">
+            <div class="alarm-delete-action" onclick="event.stopPropagation(); deleteAlarmDirectly('{{ a.id }}')">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
             </div>
           </div>
@@ -815,13 +815,17 @@ function deleteAlarmDirectly(id) {
 
   document.addEventListener('touchstart', e => {
     const card = e.target.closest('.alarm-card');
-    if (!card) {
+    const isAction = e.target.closest('.alarm-delete-action');
+
+    if (!card && !isAction) {
       document.querySelectorAll('.alarm-item-wrap.swiped').forEach(w => {
         w.classList.remove('swiped');
         w.querySelector('.swipe-container').style.transform = '';
       });
       return;
     }
+    
+    if (isAction) return;
     
     activeWrap = card.closest('.alarm-item-wrap');
     activeContainer = activeWrap.querySelector('.swipe-container');
