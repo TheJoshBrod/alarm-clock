@@ -968,10 +968,23 @@ function openDetailPaneForNew() {
 function toggleAlarmEnabled(id, event) {
   event.stopPropagation();
   const card = document.getElementById('card-' + id);
-  if (card) card.classList.toggle('alarm-disabled');
+  const isNowDisabled = card ? card.classList.toggle('alarm-disabled') : false;
+  
+  if (state.selectedAlarmId === id) {
+    const detailEnabled = document.getElementById('d-enabled');
+    if (detailEnabled) detailEnabled.checked = !isNowDisabled;
+  }
+
   fetch('/alarms/' + id + '/toggle', { method: 'POST' })
-    .then(() => location.reload())
-    .catch(() => location.reload());
+    .catch(() => {
+      if (card) card.classList.toggle('alarm-disabled');
+      if (event.target) event.target.checked = !event.target.checked;
+      if (state.selectedAlarmId === id) {
+        const detailEnabled = document.getElementById('d-enabled');
+        if (detailEnabled) detailEnabled.checked = !detailEnabled.checked;
+      }
+      showToast('Failed to toggle alarm');
+    });
 }
 
 // ── Disabled section expand/collapse ──
