@@ -252,8 +252,10 @@ input[type=text], input[type=time], select {
   padding: .6rem .75rem; font-size: 1rem; font-family: var(--font-ui);
   border: 1px solid var(--border); border-radius: 10px;
   background: var(--surface); color: var(--ink); width: 100%;
+  box-sizing: border-box; -webkit-appearance: none; appearance: none;
   transition: border-color var(--dur-f) var(--ease), box-shadow var(--dur-f) var(--ease);
 }
+input[type=time] { cursor: text; }
 input[type=text]:focus, input[type=time]:focus, select:focus {
   outline: none; border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-dim);
@@ -464,7 +466,7 @@ button.icon:active { opacity: 1; background: transparent; transform: none; }
         </svg>
         Show disabled alarms ({{ ns.disabled_alarms|length }})
       </div>
-      <ul class="alarms" id="disabled-list" hidden>
+      <ul class="alarms" id="disabled-list" hidden style="margin-top:.45rem;">
         {% for a in ns.disabled_alarms %}
         <li id="card-{{ a.id }}" class="glass alarm-card alarm-disabled"
             style="--i:{{ (ns.today_alarms|length) + (ns.upcoming_alarms|length) + loop.index0 }}"
@@ -767,6 +769,41 @@ function toggleDisabledSection() {
 
 // ── Escape closes sheet ──
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSheet(); });
+
+// ── Drag-to-dismiss on sheet grabber ──
+(function() {
+  const sheet    = document.getElementById('edit-sheet');
+  const grabber  = sheet.querySelector('.sheet-grabber');
+  let startY = 0, currentY = 0, dragging = false;
+
+  function onStart(e) {
+    dragging = true;
+    startY   = (e.touches ? e.touches[0].clientY : e.clientY);
+    currentY = 0;
+    sheet.style.transition = 'none';
+  }
+  function onMove(e) {
+    if (!dragging) return;
+    const dy = (e.touches ? e.touches[0].clientY : e.clientY) - startY;
+    currentY = Math.max(0, dy);
+    sheet.style.transform = 'translateY(' + currentY + 'px)';
+    e.preventDefault();
+  }
+  function onEnd() {
+    if (!dragging) return;
+    dragging = false;
+    sheet.style.transition = '';
+    if (currentY > 80) {
+      sheet.style.transform = '';
+      closeSheet();
+    } else {
+      sheet.style.transform = '';
+    }
+  }
+  grabber.addEventListener('touchstart', onStart, { passive: true });
+  document.addEventListener('touchmove',  onMove,  { passive: false });
+  document.addEventListener('touchend',   onEnd);
+})();
 
 // ── Live clock ──
 function updateClock() {
