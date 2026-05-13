@@ -422,6 +422,24 @@ def index():
     sunrise_hhmm, sunset_hhmm = compute_sun_times(_location)
     weather_forecast = fetch_weather(_location)
 
+    sun_x, sun_y, show_sun = 20, 23, False
+    if sunrise_hhmm and sunset_hhmm:
+        try:
+            curr_mins = now.hour * 60 + now.minute
+            h_r, m_r = map(int, sunrise_hhmm.split(':'))
+            rise_mins = h_r * 60 + m_r
+            h_s, m_s = map(int, sunset_hhmm.split(':'))
+            set_mins = h_s * 60 + m_s
+            
+            if curr_mins >= rise_mins and curr_mins <= set_mins and set_mins > rise_mins:
+                progress = (curr_mins - rise_mins) / (set_mins - rise_mins)
+                angle = math.pi * (1 - progress)
+                sun_x = 50 + 45 * math.cos(angle)
+                sun_y = 50 - 45 * math.sin(angle)
+                show_sun = True
+        except Exception:
+            pass
+
     ctx = dict(
         alarms=alarms,
         active=_alarm_active.is_set(),
@@ -436,6 +454,9 @@ def index():
         sunrise_hhmm=sunrise_hhmm,
         sunset_hhmm=sunset_hhmm,
         weather_forecast=weather_forecast,
+        sun_x=sun_x,
+        sun_y=sun_y,
+        show_sun=show_sun,
     )
 
     if use_mobile:
