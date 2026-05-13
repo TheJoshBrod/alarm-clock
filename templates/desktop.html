@@ -246,9 +246,9 @@ button.silence:active { transform: scale(.97); }
   }
 }
 .alarm-card {
-  display: grid; grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center; column-gap: .85rem;
-  padding: .8rem 1.5rem .8rem 1.1rem;
+  position: relative;
+  display: flex; align-items: center;
+  padding: .8rem 4rem .8rem 1.1rem;
   margin-bottom: .5rem; cursor: pointer; user-select: none;
   border: 2px solid transparent; overflow: hidden; min-width: 0;
   transition: background var(--dur-f) var(--ease),
@@ -272,7 +272,10 @@ button.silence:active { transform: scale(.97); }
 }
 .meta-sep { opacity: .45; }
 .alarm-card .days-display { display: flex; gap: .18rem; margin-top: .32rem; }
-.alarm-card-right { flex-shrink: 0; }
+.alarm-card-right {
+  position: absolute; top: 50%; right: 1.25rem;
+  transform: translateY(-50%);
+}
 
 /* Show disabled row */
 .show-disabled-row {
