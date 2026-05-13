@@ -976,6 +976,40 @@ function toggleAlarmEnabled(id, event) {
   }
 
   fetch('/alarms/' + id + '/toggle', { method: 'POST' })
+    .then(() => fetch(location.href))
+    .then(res => res.text())
+    .then(html => {
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      
+      const newFeed = doc.querySelector('.col-scroll');
+      const oldFeed = document.querySelector('.col-scroll');
+      if (oldFeed && newFeed) {
+        const oldList = document.getElementById('disabled-list');
+        const wasOpen = oldList && !oldList.hidden;
+        
+        oldFeed.innerHTML = newFeed.innerHTML;
+        
+        if (wasOpen) {
+           const newList = document.getElementById('disabled-list');
+           const newCaret = document.getElementById('disabled-caret');
+           if (newList) newList.hidden = false;
+           if (newCaret) newCaret.style.transform = 'rotate(90deg)';
+        }
+      }
+      
+      const newNext = doc.querySelector('.next-alarm-card');
+      const oldNext = document.querySelector('.next-alarm-card');
+      if (newNext && oldNext) oldNext.innerHTML = newNext.innerHTML;
+      
+      const newData = doc.getElementById('alarms-data');
+      const oldData = document.getElementById('alarms-data');
+      if (newData && oldData) oldData.textContent = newData.textContent;
+      
+      if (state.selectedAlarmId) {
+        const selCard = document.getElementById('card-' + state.selectedAlarmId);
+        if (selCard) selCard.classList.add('selected');
+      }
+    })
     .catch(() => {
       if (card) card.classList.toggle('alarm-disabled');
       if (event.target) event.target.checked = !event.target.checked;
