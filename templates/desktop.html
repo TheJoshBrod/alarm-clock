@@ -533,23 +533,7 @@ button.icon:hover { opacity: 1; background: transparent; box-shadow: none; trans
 
 <div class="page">
 
-  {% if active %}
-  <div class="banner glass" aria-live="assertive" role="alert">
-    <div class="led-ring" aria-hidden="true">
-      <svg viewBox="0 0 44 44" fill="none">
-        <circle class="led-outer" cx="22" cy="22" r="20" stroke="#c44" stroke-width="2" opacity=".6"/>
-        <circle cx="22" cy="22" r="12" stroke="#c44" stroke-width="2" opacity=".4"/>
-        <circle cx="22" cy="22" r="5" fill="#c44"/>
-      </svg>
-    </div>
-    <div class="banner-body">
-      <div class="banner-label">Alarm is ringing!</div>
-      <form method="post" action="{{ url_for('silence') }}">
-        <button class="silence" type="submit">Silence Alarm</button>
-      </form>
-    </div>
-  </div>
-  {% endif %}
+
 
   <div class="dashboard-grid">
 
