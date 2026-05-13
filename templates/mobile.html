@@ -53,7 +53,7 @@ html[data-tod="night"] {
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 [hidden] { display: none !important; }
 html { font-family: var(--font-ui); color: var(--ink); font-size: 16px; }
-body { min-height: 100dvh; }
+body { min-height: 100dvh; overflow-x: hidden; }
 body.sheet-open { overflow: hidden; }
 
 /* ── Backdrop ── */
@@ -137,17 +137,38 @@ button.silence:focus-visible { outline: 2px solid #c44; outline-offset: 3px; }
     from { opacity: 0; transform: translateY(8px); }
     to   { opacity: 1; transform: translateY(0); }
   }
-  .alarm-card {
+  .alarm-item-wrap {
     animation: card-in var(--dur-m) var(--ease) both;
     animation-delay: calc(var(--i, 0) * 50ms);
   }
 }
 .alarms { list-style: none; display: flex; flex-direction: column; gap: .55rem; }
+.alarm-item-wrap {
+  position: relative;
+  border-radius: 18px;
+}
+.alarm-delete-bg {
+  position: absolute;
+  top: 0; bottom: 0; right: 0;
+  width: 90px;
+  background: var(--danger);
+  border-radius: 18px;
+  display: flex; align-items: center; justify-content: center;
+  color: white;
+  z-index: 1;
+  opacity: 0;
+  transition: opacity var(--dur-f) var(--ease);
+}
+.alarm-item-wrap.is-swiping .alarm-delete-bg,
+.alarm-item-wrap.swiped .alarm-delete-bg {
+  opacity: 1;
+}
 .alarm-card {
+  position: relative; z-index: 2;
   display: flex; align-items: center;
   padding: .9rem 1rem .9rem 1.15rem;
   cursor: pointer; user-select: none; overflow: clip;
-  transition: background var(--dur-f) var(--ease);
+  transition: background var(--dur-f) var(--ease), transform var(--dur-f) var(--ease);
 }
 .alarm-card:active { background: var(--surface-hi); }
 .alarm-card.alarm-disabled { opacity: .45; }
@@ -410,9 +431,13 @@ button.icon:active { opacity: 1; background: transparent; transform: none; }
       <p class="section-head">Today</p>
       <ul class="alarms">
         {% for a in ns.today_alarms %}
-        <li id="card-{{ a.id }}" class="glass alarm-card" style="--i:{{ loop.index0 }}"
-            onclick="openSheet('{{ a.id }}')" tabindex="0" role="button"
-            onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openSheet('{{ a.id }}');}">
+        <li class="alarm-item-wrap" style="--i:{{ loop.index0 }}">
+          <div class="alarm-delete-bg" onclick="deleteAlarmDirectly('{{ a.id }}')">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+          </div>
+          <div id="card-{{ a.id }}" class="glass alarm-card"
+               onclick="if(!this._justSwiped) openSheet('{{ a.id }}')" tabindex="0" role="button"
+               onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openSheet('{{ a.id }}');}">
           <div class="alarm-card-body">
             <div class="alarm-card-time">{{ a.time }}</div>
             <div class="alarm-card-label">{{ a.label or '(no label)' }}</div>
@@ -429,6 +454,7 @@ button.icon:active { opacity: 1; background: transparent; transform: none; }
               <span class="switch-track"></span>
               <span class="switch-thumb"></span>
             </label>
+          </div>
           </div>
         </li>
         {% endfor %}
@@ -441,9 +467,13 @@ button.icon:active { opacity: 1; background: transparent; transform: none; }
       <p class="section-head">Upcoming</p>
       <ul class="alarms">
         {% for a in ns.upcoming_alarms %}
-        <li id="card-{{ a.id }}" class="glass alarm-card" style="--i:{{ (ns.today_alarms|length) + loop.index0 }}"
-            onclick="openSheet('{{ a.id }}')" tabindex="0" role="button"
-            onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openSheet('{{ a.id }}');}">
+        <li class="alarm-item-wrap" style="--i:{{ (ns.today_alarms|length) + loop.index0 }}">
+          <div class="alarm-delete-bg" onclick="deleteAlarmDirectly('{{ a.id }}')">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+          </div>
+          <div id="card-{{ a.id }}" class="glass alarm-card"
+               onclick="if(!this._justSwiped) openSheet('{{ a.id }}')" tabindex="0" role="button"
+               onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openSheet('{{ a.id }}');}">
           <div class="alarm-card-body">
             <div class="alarm-card-time">{{ a.time }}</div>
             <div class="alarm-card-label">{{ a.label or '(no label)' }}</div>
@@ -460,6 +490,7 @@ button.icon:active { opacity: 1; background: transparent; transform: none; }
               <span class="switch-track"></span>
               <span class="switch-thumb"></span>
             </label>
+          </div>
           </div>
         </li>
         {% endfor %}
@@ -480,10 +511,13 @@ button.icon:active { opacity: 1; background: transparent; transform: none; }
       </div>
       <ul class="alarms" id="disabled-list" hidden style="margin-top:.45rem;">
         {% for a in ns.disabled_alarms %}
-        <li id="card-{{ a.id }}" class="glass alarm-card alarm-disabled"
-            style="--i:{{ (ns.today_alarms|length) + (ns.upcoming_alarms|length) + loop.index0 }}"
-            onclick="openSheet('{{ a.id }}')" tabindex="0" role="button"
-            onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openSheet('{{ a.id }}');}">
+        <li class="alarm-item-wrap" style="--i:{{ (ns.today_alarms|length) + (ns.upcoming_alarms|length) + loop.index0 }}">
+          <div class="alarm-delete-bg" onclick="deleteAlarmDirectly('{{ a.id }}')">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+          </div>
+          <div id="card-{{ a.id }}" class="glass alarm-card alarm-disabled"
+               onclick="if(!this._justSwiped) openSheet('{{ a.id }}')" tabindex="0" role="button"
+               onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openSheet('{{ a.id }}');}">
           <div class="alarm-card-body">
             <div class="alarm-card-time">{{ a.time }}</div>
             <div class="alarm-card-label">{{ a.label or '(no label)' }}</div>
@@ -500,6 +534,7 @@ button.icon:active { opacity: 1; background: transparent; transform: none; }
               <span class="switch-track"></span>
               <span class="switch-thumb"></span>
             </label>
+          </div>
           </div>
         </li>
         {% endfor %}
@@ -751,6 +786,101 @@ function deleteCurrentAlarm() {
     .then(html => { refreshFeed(html); closeSheet(); showToast('Alarm deleted'); })
     .catch(() => showToast('Failed to delete — check connection'));
 }
+
+function deleteAlarmDirectly(id) {
+  if (!window.confirm('Delete this alarm?')) return;
+  fetch('/alarms/' + id + '/delete', { method: 'POST' })
+    .then(() => fetch(location.href))
+    .then(r => r.text())
+    .then(html => { refreshFeed(html); showToast('Alarm deleted'); })
+    .catch(() => showToast('Failed to delete'));
+}
+
+// ── Swipe-to-delete ──
+(function() {
+  let startX = 0, startY = 0, currentX = 0;
+  let activeCard = null, activeWrap = null;
+  let isSwiping = false;
+
+  document.addEventListener('touchstart', e => {
+    const card = e.target.closest('.alarm-card');
+    if (!card) {
+      document.querySelectorAll('.alarm-item-wrap.swiped').forEach(w => {
+        w.classList.remove('swiped');
+        w.querySelector('.alarm-card').style.transform = '';
+      });
+      return;
+    }
+    
+    activeCard = card;
+    activeWrap = card.closest('.alarm-item-wrap');
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    currentX = 0;
+    isSwiping = false;
+    card.style.transition = 'none';
+  }, { passive: true });
+
+  document.addEventListener('touchmove', e => {
+    if (!activeCard) return;
+    const dx = e.touches[0].clientX - startX;
+    const dy = e.touches[0].clientY - startY;
+
+    if (!isSwiping) {
+      if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 10) {
+        isSwiping = true;
+        activeWrap.classList.add('is-swiping');
+      } else if (Math.abs(dy) > 10) {
+        activeCard.style.transition = '';
+        activeCard = null;
+        activeWrap = null;
+        return;
+      }
+    }
+
+    if (isSwiping) {
+      currentX = dx;
+      const startOffset = activeWrap.classList.contains('swiped') ? -80 : 0;
+      let targetX = startOffset + currentX;
+      if (targetX > 0) targetX = 0;
+      if (targetX < -110) targetX = -110 + (targetX + 110) * 0.2;
+      activeCard.style.transform = 'translateX(' + targetX + 'px)';
+      e.preventDefault();
+    }
+  }, { passive: false });
+
+  document.addEventListener('touchend', e => {
+    if (!activeCard) return;
+    activeCard.style.transition = '';
+    
+    if (isSwiping) {
+      activeWrap.classList.remove('is-swiping');
+      const startOffset = activeWrap.classList.contains('swiped') ? -80 : 0;
+      const finalX = startOffset + currentX;
+      
+      if (finalX < -40) {
+        activeCard.style.transform = 'translateX(-80px)';
+        activeWrap.classList.add('swiped');
+      } else {
+        activeCard.style.transform = '';
+        activeWrap.classList.remove('swiped');
+      }
+      activeCard._justSwiped = true;
+      setTimeout(() => { if (activeCard) activeCard._justSwiped = false; }, 300);
+    }
+    
+    document.querySelectorAll('.alarm-item-wrap.swiped').forEach(w => {
+      if (w !== activeWrap) {
+        w.classList.remove('swiped');
+        w.querySelector('.alarm-card').style.transform = '';
+      }
+    });
+
+    activeCard = null;
+    activeWrap = null;
+    isSwiping = false;
+  });
+})();
 
 // ── Quick toggle (card-face switch) ──
 function toggleAlarmEnabled(id, event) {
