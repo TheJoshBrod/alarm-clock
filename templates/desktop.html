@@ -142,7 +142,21 @@ button.silence:active { transform: scale(.97); }
 .sidebar::-webkit-scrollbar { display: none; }
 
 /* Clock card */
-.clock-card { text-align: center; padding: 1.25rem 1.15rem 1rem; }
+.clock-card { text-align: center; padding: 1.25rem 1.15rem 1rem; position: relative; overflow: hidden; }
+.clock-ring-svg {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  pointer-events: none; z-index: 0;
+}
+.clock-ring-track, .clock-ring-progress {
+  fill: none; stroke-width: 2px; stroke-linecap: round;
+}
+.clock-ring-track {
+  stroke: var(--accent); opacity: 0.08;
+}
+.clock-ring-progress {
+  stroke: var(--accent); opacity: 0.55;
+}
+.clock-card-content { position: relative; z-index: 1; }
 .hero-clock {
   font-family: var(--font-disp);
   font-size: clamp(2.8rem, 4vw, 4.5rem);
@@ -524,10 +538,16 @@ button.icon:hover { opacity: 1; background: transparent; box-shadow: none; trans
     <!-- ═══════════════════════════════ Column A: Sidebar ════ -->
     <aside class="sidebar">
 
-      <div class="glass clock-card">
-        <div class="hero-clock" id="hero-time">{{ '%02d:%02d' | format(current_hour, current_minute) }}</div>
-        <div class="hero-date" id="hero-date">{{ weekday_name }}, {{ date_str }}</div>
-        <span class="hero-pill ringing" style="{{ '' if active else 'visibility:hidden' }}"><svg width="6" height="6" viewBox="0 0 6 6" fill="currentColor" aria-hidden="true"><circle cx="3" cy="3" r="3"/></svg> Ringing</span>
+      <div class="glass clock-card" id="main-clock-card">
+        <svg class="clock-ring-svg" aria-hidden="true">
+          <path class="clock-ring-track" id="clock-ring-track"></path>
+          <path class="clock-ring-progress" id="clock-ring-progress"></path>
+        </svg>
+        <div class="clock-card-content">
+          <div class="hero-clock" id="hero-time">{{ '%02d:%02d' | format(current_hour, current_minute) }}</div>
+          <div class="hero-date" id="hero-date">{{ weekday_name }}, {{ date_str }}</div>
+          <span class="hero-pill ringing" style="{{ '' if active else 'visibility:hidden' }}"><svg width="6" height="6" viewBox="0 0 6 6" fill="currentColor" aria-hidden="true"><circle cx="3" cy="3" r="3"/></svg> Ringing</span>
+        </div>
       </div>
 
       <div class="glass next-alarm-card">
@@ -1276,6 +1296,71 @@ function updateClock() {
   const ms  = (60 - now.getSeconds()) * 1000 - now.getMilliseconds();
   setTimeout(() => { updateClock(); setInterval(updateClock, 60000); }, ms);
 })();
+
+// ── Clock Seconds Ring ──
+const clockCard = document.getElementById('main-clock-card');
+const ringTrack = document.getElementById('clock-ring-track');
+const ringProgress = document.getElementById('clock-ring-progress');
+let ringPathLength = 0;
+
+function updateClockRingPath() {
+  if (!clockCard || !ringTrack || !ringProgress) return;
+  const w = clockCard.offsetWidth;
+  const h = clockCard.offsetHeight;
+  if (w === 0 || h === 0) return;
+  
+  const rx = 17; // 18px border-radius - 1px inset to put stroke inside
+  const i = 1;   // 1px inset for the 2px stroke so it sits perfectly flush inside the bounds
+  
+  const d = `
+    M ${w/2},${i}
+    H ${w - rx - i}
+    A ${rx},${rx} 0 0 1 ${w - i},${i + rx}
+    V ${h - rx - i}
+    A ${rx},${rx} 0 0 1 ${w - rx - i},${h - i}
+    H ${i + rx}
+    A ${rx},${rx} 0 0 1 ${i},${h - rx - i}
+    V ${i + rx}
+    A ${rx},${rx} 0 0 1 ${i + rx},${i}
+    Z
+  `;
+  
+  ringTrack.setAttribute('d', d);
+  ringProgress.setAttribute('d', d);
+  
+  ringPathLength = ringTrack.getTotalLength();
+  ringProgress.style.strokeDasharray = ringPathLength;
+  ringProgress.style.strokeDashoffset = ringPathLength;
+}
+
+if (clockCard) {
+  const ro = new ResizeObserver(updateClockRingPath);
+  ro.observe(clockCard);
+}
+
+function updateClockRing() {
+  if (!clockCard || !ringProgress || document.hidden) {
+    requestAnimationFrame(updateClockRing);
+    return;
+  }
+  
+  const now = new Date();
+  const sec = now.getSeconds();
+  const ms = now.getMilliseconds();
+  
+  // Calculate total progress through the minute (0.0 to 1.0)
+  const progress = (sec * 1000 + ms) / 60000;
+  
+  // Tiny organic smoothing curve (pulse)
+  const pulse = Math.sin(progress * Math.PI * 2 * 60) * 0.0008; 
+  const easedProgress = Math.max(0, Math.min(1, progress + pulse));
+  
+  const offset = ringPathLength * (1 - easedProgress);
+  ringProgress.style.strokeDashoffset = offset;
+  
+  requestAnimationFrame(updateClockRing);
+}
+requestAnimationFrame(updateClockRing);
 </script>
 </body>
 </html>
