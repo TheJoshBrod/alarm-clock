@@ -63,8 +63,11 @@ Wants=network-online.target
 Type=simple
 User=pi
 WorkingDirectory=/home/pi/alarm_clock
-ExecStart=/usr/bin/python3 /home/pi/alarm_clock/alarm_clock.py
-Restart=on-failure
+EnvironmentFile=-/home/pi/alarm_clock/alarm-clock.env
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/home/pi/alarm_clock/venv/bin/python /home/pi/alarm_clock/alarm_clock.py
+Restart=always
+RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
@@ -75,6 +78,20 @@ Enable the service:
 ```bash
 sudo systemctl enable --now alarm-clock
 ```
+
+## Lights
+
+The dashboard (desktop sidebar and top of the mobile view) has a **Lights** card with an on/off button for each smart device. Control is local over your LAN.
+
+1. Copy `lights.example.json` to `lights.json` and fill in your devices. `lights.json` is git-ignored because it holds device keys.
+   * `tuya`: needs `device_id`, `ip` and `local_key` (from `tinytuya wizard`). Leave `version` as `null` to auto-detect.
+   * `kasa`: needs `ip`. Newer firmware (KLAP) also needs your TP-Link login.
+2. For Kasa, create `alarm-clock.env` (also git-ignored, `chmod 600`) with:
+   ```
+   KASA_USERNAME=you@example.com
+   KASA_PASSWORD=yourpassword
+   ```
+3. Install the extra packages: `pip install tinytuya "python-kasa==0.7.7" "cryptography>=42"` (0.7.7 is the newest python-kasa for Python 3.9).
 
 ## Configuration
 
