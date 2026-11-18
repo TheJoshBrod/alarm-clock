@@ -560,6 +560,8 @@ button.icon:hover { opacity: 1; background: transparent; box-shadow: none; trans
         <div class="next-alarm-pips" id="next-alarm-pips"></div>
       </div>
 
+      {% include "_lights.html" %}
+
       {% if sunrise_hhmm or sunset_hhmm or weather_forecast %}
       <div class="glass today-overview-card">
         <p class="section-head">Daily Briefing</p>

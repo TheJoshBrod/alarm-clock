@@ -1,0 +1,20 @@
+{
+  "lights": [
+    {
+      "id": "lamp",
+      "name": "Lamp",
+      "type": "tuya",
+      "device_id": "your-tuya-device-id",
+      "ip": "192.168.1.11",
+      "local_key": "your-tuya-local-key",
+      "version": null,
+      "dp": 20
+    },
+    {
+      "id": "plug",
+      "name": "Plug",
+      "type": "kasa",
+      "ip": "192.168.1.7"
+    }
+  ]
+}

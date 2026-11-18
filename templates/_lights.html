@@ -1,0 +1,82 @@
+{# Lights card — included by desktop.html and mobile.html. Self-contained. #}
+<style>
+.lights-card { padding: .9rem 1.15rem; }
+.lights-card .section-head { padding-bottom: .5rem; }
+.lights-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr)); gap: .5rem; }
+.light-btn {
+  display: flex; align-items: center; gap: .55rem;
+  padding: .7rem .8rem; border-radius: 14px; text-align: left;
+  border: 1px solid var(--border); background: var(--surface);
+  color: var(--ink); font: 600 .88rem var(--font-ui); cursor: pointer;
+  transition: background var(--dur-f) var(--ease), border-color var(--dur-f) var(--ease), transform var(--dur-f) var(--ease);
+}
+.light-btn:active { transform: scale(.97); }
+.light-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.light-btn .bulb { flex-shrink: 0; width: 1.6rem; height: 1.6rem; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--accent-dim); color: var(--ink-dim); transition: inherit; }
+.light-btn .light-text { min-width: 0; display: flex; flex-direction: column; }
+.light-btn .light-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.light-btn .light-state { font-size: .7rem; font-weight: 500; color: var(--ink-dim); }
+.light-btn.on { border-color: rgba(233,192,128,.6); background: rgba(233,192,128,.22); }
+.light-btn.on .bulb { background: #e9c080; color: #2a1827; box-shadow: 0 0 12px rgba(233,192,128,.7); }
+.light-btn.err .light-state { color: var(--danger); }
+.light-btn.busy { opacity: .6; pointer-events: none; }
+.lights-empty { font-size: .8rem; color: var(--ink-dim); }
+</style>
+
+<div class="glass lights-card" id="lights-card">
+  <p class="section-head">Lights</p>
+  <div class="lights-grid" id="lights-grid"><div class="lights-empty">Loading…</div></div>
+</div>
+
+<script>
+(function () {
+  const grid = document.getElementById('lights-grid');
+  const bulb = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.1V17h6v-.2c0-.8.4-1.6 1-2.1A7 7 0 0 0 12 2z"/></svg>';
+
+  function render(lights) {
+    if (!lights.length) { grid.innerHTML = '<div class="lights-empty">No lights configured.</div>'; return; }
+    grid.innerHTML = '';
+    for (const l of lights) grid.appendChild(button(l));
+  }
+
+  function button(l) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.id = 'light-' + l.id;
+    update(b, l);
+    b.addEventListener('click', () => toggle(b, l.id));
+    return b;
+  }
+
+  function update(b, l) {
+    const state = l.error ? 'Unavailable' : (l.on ? 'On' : 'Off');
+    b.className = 'light-btn' + (l.on ? ' on' : '') + (l.error ? ' err' : '');
+    b.setAttribute('aria-pressed', l.on ? 'true' : 'false');
+    b.title = l.error || ('Turn ' + (l.on ? 'off' : 'on'));
+    b.innerHTML = '<span class="bulb">' + bulb + '</span><span class="light-text"><span class="light-name"></span><span class="light-state"></span></span>';
+    b.querySelector('.light-name').textContent = l.name;
+    b.querySelector('.light-state').textContent = state;
+  }
+
+  function toggle(b, id) {
+    b.classList.add('busy');
+    b.querySelector('.light-state').textContent = '…';
+    fetch('/lights/' + encodeURIComponent(id) + '/toggle', { method: 'POST' })
+      .then(r => r.json())
+      .then(l => update(b, l))
+      .catch(() => { b.classList.add('err'); b.querySelector('.light-state').textContent = 'Unavailable'; })
+      .finally(() => b.classList.remove('busy'));
+  }
+
+  function refresh() {
+    if (grid.querySelector('.busy')) return;
+    fetch('/lights').then(r => r.json()).then(render).catch(() => {});
+  }
+
+  refresh();
+  setInterval(() => { if (!document.hidden) refresh(); }, 20000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
+})();
+</script>

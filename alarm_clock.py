@@ -24,6 +24,8 @@ from werkzeug.utils import secure_filename
 
 from aiy.board import Board, Led
 
+import lights
+
 BASE_DIR = Path(__file__).resolve().parent
 AUDIO_DIR = BASE_DIR / "audio"
 ALARMS_FILE = BASE_DIR / "alarms.json"
@@ -775,6 +777,19 @@ def status():
     return jsonify({"alarm_active": _alarm_active.is_set()})
 
 
+@app.route("/lights")
+def lights_list():
+    return jsonify(lights.all_states())
+
+
+@app.route("/lights/<light_id>/toggle", methods=["POST"])
+def lights_toggle(light_id):
+    try:
+        return jsonify(lights.toggle(light_id))
+    except KeyError:
+        return jsonify({"error": "Unknown light"}), 404
+
+
 def get_local_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
@@ -788,6 +803,7 @@ def main():
     global _board, _location
     load_alarms()
     load_audio_meta()
+    lights.load()
     _location = fetch_location()
     with Board() as board:
         _board = board
