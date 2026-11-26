@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import array
+import hmac
 import json
 import math
 import os
 import re
+import secrets
 import socket
 import subprocess
 import threading
@@ -18,8 +20,9 @@ try:
 except ImportError:
     pass
 from pathlib import Path
+from urllib.parse import urlparse
 
-from flask import Flask, jsonify, redirect, render_template, request, send_from_directory, url_for
+from flask import Flask, jsonify, redirect, render_template, request, send_from_directory, session, url_for
 from werkzeug.utils import secure_filename
 
 from aiy.board import Board, Led
@@ -32,6 +35,7 @@ ALARMS_FILE = BASE_DIR / "alarms.json"
 AUDIO_META_FILE = BASE_DIR / "audio_meta.json"
 LOCATION_CACHE_FILE = BASE_DIR / "location_cache.json"
 WEATHER_CACHE_FILE = BASE_DIR / "weather_cache.json"
+SECRET_KEY_FILE = BASE_DIR / "secret_key"
 AUDIO_DIR.mkdir(exist_ok=True)
 
 # Deployment-specific knobs — override via environment variables.
@@ -41,9 +45,24 @@ TONE_FREQ = float(os.environ.get("ALARM_TONE_FREQ", "880"))
 TONE_DURATION = float(os.environ.get("ALARM_TONE_DURATION", "1.0"))
 TONE_SAMPLE_RATE = int(os.environ.get("ALARM_TONE_SAMPLE_RATE", "44100"))
 FADE_START_PCT = int(os.environ.get("ALARM_FADE_START_PCT", "10"))
+ALARM_PASSWORD = os.environ.get("ALARM_PASSWORD", "")
+
+
+def _load_secret_key() -> bytes:
+    if not SECRET_KEY_FILE.exists():
+        SECRET_KEY_FILE.write_bytes(secrets.token_bytes(32))
+        SECRET_KEY_FILE.chmod(0o600)
+    return SECRET_KEY_FILE.read_bytes()
+
 
 app = Flask(__name__)
-app.config["MAX_CONTENT_LENGTH"] = 32 * 1024 * 1024  # 32 MB upload limit
+app.config.update(
+    MAX_CONTENT_LENGTH=32 * 1024 * 1024,  # 32 MB upload limit
+    SECRET_KEY=_load_secret_key(),
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+    PERMANENT_SESSION_LIFETIME=timedelta(days=365),
+)
 
 _state_lock = threading.Lock()
 _alarms = []
@@ -513,6 +532,47 @@ def _validate_audio_bytes(data: bytes, ext: str) -> bool:
     return False
 
 
+def _audio_choice(name: str) -> str | None:
+    safe = secure_filename(name)
+    return safe if safe and (AUDIO_DIR / safe).is_file() else None
+
+
+def _parse_days(values) -> list[int]:
+    days = sorted({int(d) for d in values if d.isdigit() and int(d) < 7})
+    return days or list(range(7))
+
+
+def _same_origin() -> bool:
+    # Browsers attach Origin (or Referer) to cross-site requests; requests without either aren't from a web page.
+    source = request.headers.get("Origin") or request.headers.get("Referer")
+    return source is None or urlparse(source).netloc == request.host
+
+
+@app.before_request
+def _guard():
+    if request.method not in ("GET", "HEAD", "OPTIONS") and not _same_origin():
+        return "Cross-site request blocked", 403
+    if ALARM_PASSWORD and not session.get("authed") and request.endpoint != "login":
+        if request.method == "GET":
+            return redirect(url_for("login"))
+        return "Login required", 401
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if not ALARM_PASSWORD:
+        return redirect(url_for("index"))
+    error = None
+    if request.method == "POST":
+        if hmac.compare_digest(request.form.get("password", "").encode(), ALARM_PASSWORD.encode()):
+            session.permanent = True
+            session["authed"] = True
+            return redirect(url_for("index"))
+        time.sleep(1)
+        error = "Wrong password"
+    return render_template("login.html", error=error)
+
+
 @app.route("/")
 def index():
     view = request.args.get("view", "")
@@ -571,12 +631,6 @@ def index():
     return render_template("desktop.html", **ctx, audio_meta=_audio_meta)
 
 
-@app.route("/silence", methods=["POST"])
-def silence():
-    silence_alarm()
-    return redirect(url_for("index"))
-
-
 @app.route("/audio/<filename>")
 def serve_audio(filename):
     safe = secure_filename(filename)
@@ -599,6 +653,8 @@ def upload_audio():
 
     safe_name = secure_filename(f.filename).lower()
     dest = AUDIO_DIR / safe_name
+    if dest.exists() or _TONE_RE.match(safe_name):
+        return f'A file named "{safe_name}" already exists', 409
     dest.write_bytes(raw)
     return redirect(url_for("index"))
 
@@ -664,7 +720,7 @@ def create_alarm():
         volume = max(0, min(100, int(request.form.get("volume", 80))))
     except ValueError:
         volume = 80
-    days_int = sorted({int(d) for d in days}) if days else list(range(7))
+    days_int = _parse_days(days)
 
     if not time_str:
         return "time is required", 400
@@ -675,9 +731,8 @@ def create_alarm():
 
     alarm_id = uuid.uuid4().hex[:8]
 
-    if audio_file_choice and (AUDIO_DIR / audio_file_choice).exists():
-        audio_filename = audio_file_choice
-    else:
+    audio_filename = _audio_choice(audio_file_choice)
+    if not audio_filename:
         wav_path = AUDIO_DIR / f"{alarm_id}.wav"
         generate_tone_wav(wav_path)
         audio_filename = wav_path.name
@@ -731,7 +786,7 @@ def edit_alarm(alarm_id):
     except ValueError:
         volume = 80
     enabled = request.form.get("enabled") == "1"
-    days_int = sorted({int(d) for d in days}) if days else list(range(7))
+    days_int = _parse_days(days)
 
     if not time_str:
         return "time is required", 400
@@ -749,8 +804,8 @@ def edit_alarm(alarm_id):
                 a["fade_in_seconds"] = fade_in_seconds
                 a["volume"] = volume
                 a["enabled"] = enabled
-                if audio_file_choice and (AUDIO_DIR / audio_file_choice).exists():
-                    a["audio_file"] = audio_file_choice
+                if choice := _audio_choice(audio_file_choice):
+                    a["audio_file"] = choice
                 elif not audio_file_choice and not _TONE_RE.match(a["audio_file"]):
                     wav_path = AUDIO_DIR / f"{a['id']}.wav"
                     if not wav_path.exists():
@@ -805,6 +860,8 @@ def main():
     load_audio_meta()
     lights.load()
     _location = fetch_location()
+    if not ALARM_PASSWORD:
+        print("WARNING: ALARM_PASSWORD is not set, so anyone on your network can use the web UI.")
     with Board() as board:
         _board = board
         board.led.state = Led.ON
