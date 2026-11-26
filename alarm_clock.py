@@ -38,7 +38,6 @@ WEATHER_CACHE_FILE = BASE_DIR / "weather_cache.json"
 SECRET_KEY_FILE = BASE_DIR / "secret_key"
 AUDIO_DIR.mkdir(exist_ok=True)
 
-# Deployment-specific knobs — override via environment variables.
 ALSA_MIXER = os.environ.get("ALARM_ALSA_MIXER", "Master")
 ALARM_PORT = int(os.environ.get("ALARM_PORT", "8080"))
 TONE_FREQ = float(os.environ.get("ALARM_TONE_FREQ", "880"))
@@ -57,7 +56,7 @@ def _load_secret_key() -> bytes:
 
 app = Flask(__name__)
 app.config.update(
-    MAX_CONTENT_LENGTH=32 * 1024 * 1024,  # 32 MB upload limit
+    MAX_CONTENT_LENGTH=32 * 1024 * 1024,
     SECRET_KEY=_load_secret_key(),
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Lax",
@@ -75,15 +74,13 @@ _active_proc_lock = threading.Lock()
 _board = None
 _led_lock = threading.Lock()
 
-_original_volume = None  # int or None; saved before fade-in ramp, restored on silence
+_original_volume = None
 
-# Regex to identify auto-generated per-alarm tone files (8 hex chars + .wav).
-# These are owned by their alarm and deleted with it.
-# Uploaded library files have user-chosen names and are not auto-deleted.
+# Auto-generated per-alarm tones, deleted with their alarm (unlike uploaded library files).
 _TONE_RE = re.compile(r"^[0-9a-f]{8}\.wav$")
 
 
-_audio_meta: dict = {}  # filename -> {"favorite": bool}
+_audio_meta: dict = {}
 
 
 def load_alarms():
@@ -132,7 +129,6 @@ def save_audio_meta():
 
 
 def fetch_location() -> dict | None:
-    """Return {lat, lon, tz} from IP geolocation, using a cache file to survive reboots."""
     if LOCATION_CACHE_FILE.exists():
         try:
             with LOCATION_CACHE_FILE.open() as f:
@@ -282,7 +278,6 @@ def compute_astro_data(loc: dict | None) -> dict:
 
 
 def fetch_weather(loc: dict | None) -> str | None:
-    """Fetch daily weather forecast using Open-Meteo API, caching results for 10 minutes."""
     if loc is None:
         return None
     
@@ -308,7 +303,7 @@ def fetch_weather(loc: dict | None) -> str | None:
             code = daily.get("weathercode", [0])[0]
             temp = current.get("temperature", tmax)
             
-            # Basic WMO code mapping
+            # WMO weather codes
             if code == 0: desc = "Clear"
             elif code in (1, 2, 3): desc = "Partly Cloudy"
             elif code in (45, 48): desc = "Fog"
@@ -400,7 +395,6 @@ def _set_alsa_volume(pct: int):
 
 
 def _volume_ramp_loop(start_pct: int, end_pct: int, duration_sec: int):
-    # One step every ~10 s, minimum 10 steps.
     steps = max(10, duration_sec // 10)
     interval = duration_sec / steps
     _set_alsa_volume(start_pct)
@@ -457,12 +451,10 @@ def silence_alarm():
 
 
 def scheduler_loop():
-    # Fires when local time matches an alarm's HH:MM and today is in days[].
-    # Uses _last_fired to prevent re-trigger within the same minute.
     while True:
         try:
             now = datetime.now()
-            day_idx = now.weekday()  # Monday = 0
+            day_idx = now.weekday()
             hhmm = now.strftime("%H:%M")
             minute_key = now.strftime("%Y-%m-%dT%H:%M")
 
@@ -487,8 +479,6 @@ def scheduler_loop():
 
 
 def button_loop():
-    # board.button.wait_for_press() blocks until the next press.
-    # While the alarm is active, the press silences it. Otherwise it's a no-op.
     while True:
         try:
             _board.button.wait_for_press()
@@ -496,7 +486,6 @@ def button_loop():
                 silence_alarm()
             else:
                 print("Button pressed (no alarm active).")
-            # Tiny debounce so a held button doesn't spam.
             time.sleep(0.3)
         except Exception as e:
             print(f"Button error: {e}")
@@ -509,7 +498,6 @@ def _is_mobile():
 
 
 def _library_audio_files():
-    """Return audio file dicts sorted favorites-first then alphabetically."""
     names = sorted(
         p.name for p in AUDIO_DIR.iterdir()
         if p.is_file() and not _TONE_RE.match(p.name) and p.suffix.lower() in (".wav", ".mp3")
@@ -543,7 +531,7 @@ def _parse_days(values) -> list[int]:
 
 
 def _same_origin() -> bool:
-    # Browsers attach Origin (or Referer) to cross-site requests; requests without either aren't from a web page.
+    # No Origin or Referer means the request didn't come from a web page.
     source = request.headers.get("Origin") or request.headers.get("Referer")
     return source is None or urlparse(source).netloc == request.host
 
@@ -616,7 +604,7 @@ def index():
         weekday_name=now.strftime("%A"),
         date_str=now.strftime("%b %-d"),
         tod=tod,
-        today_weekday=now.weekday(),  # Monday=0
+        today_weekday=now.weekday(),
         current_hhmm=now.strftime("%H:%M"),
         weather_forecast=weather_forecast,
         sun_x=sun_x,
@@ -759,7 +747,6 @@ def delete_alarm(alarm_id):
         keep = []
         for a in _alarms:
             if a["id"] == alarm_id:
-                # Only delete the audio file if it's the auto-generated tone for this alarm.
                 if _TONE_RE.match(a["audio_file"]):
                     wav = AUDIO_DIR / a["audio_file"]
                     if wav.exists():

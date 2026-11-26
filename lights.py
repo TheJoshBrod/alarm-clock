@@ -1,12 +1,3 @@
-"""Local control of smart lights (Tuya bulbs and Kasa plugs) for the dashboard.
-
-Devices are listed in lights.json next to this file (git-ignored because it
-holds device keys). See lights.example.json for the format.
-
-Kasa devices on newer firmware (KLAP) need your TP-Link account login; set
-KASA_USERNAME and KASA_PASSWORD in the environment (alarm-clock.env on the Pi).
-Commands still go straight to the device on your LAN, not through the cloud.
-"""
 from __future__ import annotations
 
 import asyncio
@@ -22,8 +13,6 @@ TUYA_VERSIONS = (3.3, 3.4, 3.5, 3.1)
 class LightError(Exception):
     pass
 
-
-# ── Tuya ───────────────────────────────────────────────────────────────────
 
 class TuyaLight:
     def __init__(self, cfg: dict):
@@ -76,14 +65,11 @@ class TuyaLight:
             return on
 
 
-# ── Kasa ───────────────────────────────────────────────────────────────────
-
 _loop: asyncio.AbstractEventLoop | None = None
 _loop_lock = threading.Lock()
 
 
 def _run(coro, timeout=15):
-    """Run a coroutine on one shared background event loop."""
     global _loop
     with _loop_lock:
         if _loop is None:
@@ -99,9 +85,7 @@ class KasaLight:
         self.name = cfg.get("name") or cfg["id"]
 
     def _connect(self):
-        # The EP10 speaks the IOT command set over KLAP v2. python-kasa won't
-        # assemble that combo on its own, so wire it up explicitly
-        # (same approach as tinytuya/kasa_test.py, using python-kasa 0.7 paths).
+        # The EP10 speaks IOT over KLAP v2, which python-kasa won't pick on its own.
         from kasa.credentials import Credentials
         from kasa.deviceconfig import (
             DeviceConfig, DeviceConnectionParameters, DeviceEncryptionType, DeviceFamily,
@@ -156,7 +140,6 @@ class KasaLight:
             raise LightError(f"Kasa: {e}") from e
 
 
-# ── Registry ───────────────────────────────────────────────────────────────
 
 _TYPES = {"tuya": TuyaLight, "kasa": KasaLight}
 _lights: dict[str, TuyaLight | KasaLight] = {}
@@ -180,7 +163,6 @@ def _entry(light, on=None, error=None):
 
 
 def all_states() -> list[dict]:
-    """Query every light in parallel so one slow device doesn't stall the rest."""
     results: dict[str, dict] = {}
 
     def worker(light):
