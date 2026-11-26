@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Alarm Clock</title>
+<style>
+:root { color-scheme: light dark; }
+body {
+  min-height: 100dvh; margin: 0; display: grid; place-items: center;
+  font-family: system-ui, sans-serif; background: #181a2c; color: #e6e3f2;
+}
+form { display: grid; gap: .75rem; width: min(20rem, 100% - 2rem); }
+h1 { font-size: 1.3rem; font-weight: 600; margin: 0 0 .25rem; }
+input, button { font: inherit; padding: .7rem .9rem; border-radius: 12px; border: 1px solid rgba(255,255,255,.15); }
+input { background: rgba(255,255,255,.07); color: inherit; }
+button { background: #9880cc; color: #fff; border: none; font-weight: 600; cursor: pointer; }
+.error { color: #f08080; margin: 0; }
+</style>
+</head>
+<body>
+<form method="post">
+  <h1>Alarm Clock</h1>
+  {% if error %}<p class="error">{{ error }}</p>{% endif %}
+  <input type="password" name="password" placeholder="Password" autocomplete="current-password" autofocus required>
+  <button type="submit">Log in</button>
+</form>
+</body>
+</html>

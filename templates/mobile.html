@@ -112,14 +112,6 @@ body::before {
 }
 .banner-body { flex: 1; }
 .banner-label { font-size: .95rem; font-weight: 700; color: #c44; margin-bottom: .5rem; }
-button.silence {
-  width: 100%; padding: .75rem 1.2rem; font-size: 1.05rem; font-weight: 700;
-  border-radius: 12px; border: none;
-  background: #c44; color: white; cursor: pointer; font-family: var(--font-ui);
-  transition: background var(--dur-f) var(--ease);
-}
-button.silence:active { background: #a33; }
-button.silence:focus-visible { outline: 2px solid #c44; outline-offset: 3px; }
 
 /* ── Section label ── */
 .section-head {
@@ -419,9 +411,7 @@ button.icon:active { opacity: 1; background: transparent; transform: none; }
     </div>
     <div class="banner-body">
       <div class="banner-label">Alarm is ringing!</div>
-      <form method="post" action="{{ url_for('silence') }}">
-        <button class="silence" type="submit">Silence Alarm</button>
-      </form>
+      <div>Press the button on the clock to stop it.</div>
     </div>
   </div>
   {% endif %}

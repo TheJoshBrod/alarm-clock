@@ -93,12 +93,25 @@ The dashboard (desktop sidebar and top of the mobile view) has a **Lights** card
    ```
 3. Install the extra packages: `pip install tinytuya "python-kasa==0.7.7" "cryptography>=42"` (0.7.7 is the newest python-kasa for Python 3.9).
 
+## Security
+
+Set a password so only you can use the web UI. Add it to `alarm-clock.env` (git-ignored, `chmod 600`):
+
+```
+ALARM_PASSWORD=a-long-password
+```
+
+Each browser logs in once and stays logged in for a year. The session signing key is generated on first run and saved to `secret_key` (git-ignored); delete it to log out every device. Without `ALARM_PASSWORD` the UI stays open to anyone on your network and a warning is printed at startup.
+
+Requests that change anything must come from the alarm clock's own pages, so other websites you visit can't send commands to it. To reach it away from home, use a VPN such as Tailscale rather than forwarding the port on your router.
+
 ## Configuration
 
 Modify default settings using environment variables:
 
 | Variable | Default | Description |
 | --- | --- | --- |
+| `ALARM_PASSWORD` | *(none)* | Password for the web UI |
 | `ALARM_PORT` | `8080` | Web server port |
 | `ALARM_ALSA_MIXER` | `Master` | ALSA mixer control name |
 | `ALARM_TONE_FREQ` | `880` | Default tone frequency (Hz) |

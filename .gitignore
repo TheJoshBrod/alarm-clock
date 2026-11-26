@@ -5,4 +5,5 @@ location_cache.json
 weather_cache.json
 lights.json
 alarm-clock.env
+secret_key
 venv/

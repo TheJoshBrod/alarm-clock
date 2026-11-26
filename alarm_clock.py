@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import array
+import hmac
 import json
 import math
 import os
 import re
+import secrets
 import socket
 import subprocess
 import threading
@@ -18,8 +20,9 @@ try:
 except ImportError:
     pass
 from pathlib import Path
+from urllib.parse import urlparse
 
-from flask import Flask, jsonify, redirect, render_template, request, send_from_directory, url_for
+from flask import Flask, jsonify, redirect, render_template, request, send_from_directory, session, url_for
 from werkzeug.utils import secure_filename
 
 from aiy.board import Board, Led
@@ -32,18 +35,33 @@ ALARMS_FILE = BASE_DIR / "alarms.json"
 AUDIO_META_FILE = BASE_DIR / "audio_meta.json"
 LOCATION_CACHE_FILE = BASE_DIR / "location_cache.json"
 WEATHER_CACHE_FILE = BASE_DIR / "weather_cache.json"
+SECRET_KEY_FILE = BASE_DIR / "secret_key"
 AUDIO_DIR.mkdir(exist_ok=True)
 
-# Deployment-specific knobs — override via environment variables.
 ALSA_MIXER = os.environ.get("ALARM_ALSA_MIXER", "Master")
 ALARM_PORT = int(os.environ.get("ALARM_PORT", "8080"))
 TONE_FREQ = float(os.environ.get("ALARM_TONE_FREQ", "880"))
 TONE_DURATION = float(os.environ.get("ALARM_TONE_DURATION", "1.0"))
 TONE_SAMPLE_RATE = int(os.environ.get("ALARM_TONE_SAMPLE_RATE", "44100"))
 FADE_START_PCT = int(os.environ.get("ALARM_FADE_START_PCT", "10"))
+ALARM_PASSWORD = os.environ.get("ALARM_PASSWORD", "")
+
+
+def _load_secret_key() -> bytes:
+    if not SECRET_KEY_FILE.exists():
+        SECRET_KEY_FILE.write_bytes(secrets.token_bytes(32))
+        SECRET_KEY_FILE.chmod(0o600)
+    return SECRET_KEY_FILE.read_bytes()
+
 
 app = Flask(__name__)
-app.config["MAX_CONTENT_LENGTH"] = 32 * 1024 * 1024  # 32 MB upload limit
+app.config.update(
+    MAX_CONTENT_LENGTH=32 * 1024 * 1024,
+    SECRET_KEY=_load_secret_key(),
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+    PERMANENT_SESSION_LIFETIME=timedelta(days=365),
+)
 
 _state_lock = threading.Lock()
 _alarms = []
@@ -56,15 +74,13 @@ _active_proc_lock = threading.Lock()
 _board = None
 _led_lock = threading.Lock()
 
-_original_volume = None  # int or None; saved before fade-in ramp, restored on silence
+_original_volume = None
 
-# Regex to identify auto-generated per-alarm tone files (8 hex chars + .wav).
-# These are owned by their alarm and deleted with it.
-# Uploaded library files have user-chosen names and are not auto-deleted.
+# Auto-generated per-alarm tones, deleted with their alarm (unlike uploaded library files).
 _TONE_RE = re.compile(r"^[0-9a-f]{8}\.wav$")
 
 
-_audio_meta: dict = {}  # filename -> {"favorite": bool}
+_audio_meta: dict = {}
 
 
 def load_alarms():
@@ -113,7 +129,6 @@ def save_audio_meta():
 
 
 def fetch_location() -> dict | None:
-    """Return {lat, lon, tz} from IP geolocation, using a cache file to survive reboots."""
     if LOCATION_CACHE_FILE.exists():
         try:
             with LOCATION_CACHE_FILE.open() as f:
@@ -263,7 +278,6 @@ def compute_astro_data(loc: dict | None) -> dict:
 
 
 def fetch_weather(loc: dict | None) -> str | None:
-    """Fetch daily weather forecast using Open-Meteo API, caching results for 10 minutes."""
     if loc is None:
         return None
     
@@ -289,7 +303,7 @@ def fetch_weather(loc: dict | None) -> str | None:
             code = daily.get("weathercode", [0])[0]
             temp = current.get("temperature", tmax)
             
-            # Basic WMO code mapping
+            # WMO weather codes
             if code == 0: desc = "Clear"
             elif code in (1, 2, 3): desc = "Partly Cloudy"
             elif code in (45, 48): desc = "Fog"
@@ -381,7 +395,6 @@ def _set_alsa_volume(pct: int):
 
 
 def _volume_ramp_loop(start_pct: int, end_pct: int, duration_sec: int):
-    # One step every ~10 s, minimum 10 steps.
     steps = max(10, duration_sec // 10)
     interval = duration_sec / steps
     _set_alsa_volume(start_pct)
@@ -438,12 +451,10 @@ def silence_alarm():
 
 
 def scheduler_loop():
-    # Fires when local time matches an alarm's HH:MM and today is in days[].
-    # Uses _last_fired to prevent re-trigger within the same minute.
     while True:
         try:
             now = datetime.now()
-            day_idx = now.weekday()  # Monday = 0
+            day_idx = now.weekday()
             hhmm = now.strftime("%H:%M")
             minute_key = now.strftime("%Y-%m-%dT%H:%M")
 
@@ -468,8 +479,6 @@ def scheduler_loop():
 
 
 def button_loop():
-    # board.button.wait_for_press() blocks until the next press.
-    # While the alarm is active, the press silences it. Otherwise it's a no-op.
     while True:
         try:
             _board.button.wait_for_press()
@@ -477,7 +486,6 @@ def button_loop():
                 silence_alarm()
             else:
                 print("Button pressed (no alarm active).")
-            # Tiny debounce so a held button doesn't spam.
             time.sleep(0.3)
         except Exception as e:
             print(f"Button error: {e}")
@@ -490,7 +498,6 @@ def _is_mobile():
 
 
 def _library_audio_files():
-    """Return audio file dicts sorted favorites-first then alphabetically."""
     names = sorted(
         p.name for p in AUDIO_DIR.iterdir()
         if p.is_file() and not _TONE_RE.match(p.name) and p.suffix.lower() in (".wav", ".mp3")
@@ -511,6 +518,47 @@ def _validate_audio_bytes(data: bytes, ext: str) -> bool:
         # ID3 tag header OR MPEG sync frame
         return data[:3] == b"ID3" or (len(data) >= 2 and data[0] == 0xFF and data[1] in (0xFB, 0xFA, 0xF3, 0xF2))
     return False
+
+
+def _audio_choice(name: str) -> str | None:
+    safe = secure_filename(name)
+    return safe if safe and (AUDIO_DIR / safe).is_file() else None
+
+
+def _parse_days(values) -> list[int]:
+    days = sorted({int(d) for d in values if d.isdigit() and int(d) < 7})
+    return days or list(range(7))
+
+
+def _same_origin() -> bool:
+    # No Origin or Referer means the request didn't come from a web page.
+    source = request.headers.get("Origin") or request.headers.get("Referer")
+    return source is None or urlparse(source).netloc == request.host
+
+
+@app.before_request
+def _guard():
+    if request.method not in ("GET", "HEAD", "OPTIONS") and not _same_origin():
+        return "Cross-site request blocked", 403
+    if ALARM_PASSWORD and not session.get("authed") and request.endpoint != "login":
+        if request.method == "GET":
+            return redirect(url_for("login"))
+        return "Login required", 401
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if not ALARM_PASSWORD:
+        return redirect(url_for("index"))
+    error = None
+    if request.method == "POST":
+        if hmac.compare_digest(request.form.get("password", "").encode(), ALARM_PASSWORD.encode()):
+            session.permanent = True
+            session["authed"] = True
+            return redirect(url_for("index"))
+        time.sleep(1)
+        error = "Wrong password"
+    return render_template("login.html", error=error)
 
 
 @app.route("/")
@@ -556,7 +604,7 @@ def index():
         weekday_name=now.strftime("%A"),
         date_str=now.strftime("%b %-d"),
         tod=tod,
-        today_weekday=now.weekday(),  # Monday=0
+        today_weekday=now.weekday(),
         current_hhmm=now.strftime("%H:%M"),
         weather_forecast=weather_forecast,
         sun_x=sun_x,
@@ -569,12 +617,6 @@ def index():
     if use_mobile:
         return render_template("mobile.html", **ctx)
     return render_template("desktop.html", **ctx, audio_meta=_audio_meta)
-
-
-@app.route("/silence", methods=["POST"])
-def silence():
-    silence_alarm()
-    return redirect(url_for("index"))
 
 
 @app.route("/audio/<filename>")
@@ -599,6 +641,8 @@ def upload_audio():
 
     safe_name = secure_filename(f.filename).lower()
     dest = AUDIO_DIR / safe_name
+    if dest.exists() or _TONE_RE.match(safe_name):
+        return f'A file named "{safe_name}" already exists', 409
     dest.write_bytes(raw)
     return redirect(url_for("index"))
 
@@ -664,7 +708,7 @@ def create_alarm():
         volume = max(0, min(100, int(request.form.get("volume", 80))))
     except ValueError:
         volume = 80
-    days_int = sorted({int(d) for d in days}) if days else list(range(7))
+    days_int = _parse_days(days)
 
     if not time_str:
         return "time is required", 400
@@ -675,9 +719,8 @@ def create_alarm():
 
     alarm_id = uuid.uuid4().hex[:8]
 
-    if audio_file_choice and (AUDIO_DIR / audio_file_choice).exists():
-        audio_filename = audio_file_choice
-    else:
+    audio_filename = _audio_choice(audio_file_choice)
+    if not audio_filename:
         wav_path = AUDIO_DIR / f"{alarm_id}.wav"
         generate_tone_wav(wav_path)
         audio_filename = wav_path.name
@@ -704,7 +747,6 @@ def delete_alarm(alarm_id):
         keep = []
         for a in _alarms:
             if a["id"] == alarm_id:
-                # Only delete the audio file if it's the auto-generated tone for this alarm.
                 if _TONE_RE.match(a["audio_file"]):
                     wav = AUDIO_DIR / a["audio_file"]
                     if wav.exists():
@@ -731,7 +773,7 @@ def edit_alarm(alarm_id):
     except ValueError:
         volume = 80
     enabled = request.form.get("enabled") == "1"
-    days_int = sorted({int(d) for d in days}) if days else list(range(7))
+    days_int = _parse_days(days)
 
     if not time_str:
         return "time is required", 400
@@ -749,8 +791,8 @@ def edit_alarm(alarm_id):
                 a["fade_in_seconds"] = fade_in_seconds
                 a["volume"] = volume
                 a["enabled"] = enabled
-                if audio_file_choice and (AUDIO_DIR / audio_file_choice).exists():
-                    a["audio_file"] = audio_file_choice
+                if choice := _audio_choice(audio_file_choice):
+                    a["audio_file"] = choice
                 elif not audio_file_choice and not _TONE_RE.match(a["audio_file"]):
                     wav_path = AUDIO_DIR / f"{a['id']}.wav"
                     if not wav_path.exists():
@@ -805,6 +847,8 @@ def main():
     load_audio_meta()
     lights.load()
     _location = fetch_location()
+    if not ALARM_PASSWORD:
+        print("WARNING: ALARM_PASSWORD is not set, so anyone on your network can use the web UI.")
     with Board() as board:
         _board = board
         board.led.state = Led.ON
